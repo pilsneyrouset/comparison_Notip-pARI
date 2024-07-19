@@ -18,8 +18,7 @@ from posthoc_fmri import get_processed_input
 fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952)
 
 seed = 42
-
-B = 1000
+B = 5
 alpha = 0.05
 
 if len(sys.argv) > 1:

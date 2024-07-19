@@ -30,7 +30,7 @@ from nilearn._utils.niimg import safe_get_data
 from nilearn.reporting.get_clusters_table import _local_max
 from sanssouci.lambda_calibration import get_pivotal_stats, get_pivotal_stats_shifted
 from sanssouci.reference_families import inverse_shifted_template, shifted_template
-
+from sanssouci.lambda_calibration import calibrate_jer
 
 def get_data_driven_template_two_tasks(
         task1, task2, smoothing_fwhm=4,
@@ -398,7 +398,7 @@ def compute_bounds(task1s, task2s, learned_templates,
                                            k_max=k_max, B=B,
                                            n_jobs=n_jobs, seed=seed)
         calibrated_tpl = calibrate_jer(alpha, learned_templates,
-                                          pval0, k_max)
+                                       pval0, k_max)
 
         _, region_size_simes = sa.find_largest_region(p_values, simes_thr,
                                                       TDP,

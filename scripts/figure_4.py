@@ -13,12 +13,19 @@ fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
 fig_path = os.path.join(fig_path_, 'figures')
 
 # Fetch data
-fetch_neurovault(max_images=np.infty, mode='overwrite', collection_id=1952)
+fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952)
 
 sys.path.append(script_path)
 from posthoc_fmri import compute_bounds, get_data_driven_template_two_tasks
+from sanssouci.lambda_calibration import calibrate_jer
 
 seed = 42
+alpha = 0.05
+B = 1000
+n_train = 10000
+k_max = 1000
+smoothing_fwhm = 4
+k_min = 27
 
 location = './cachedir'
 memory = Memory(location, mmap_mode='r', verbose=0)
@@ -30,13 +37,9 @@ get_data_driven_template_two_tasks = memory.cache(
                                     get_data_driven_template_two_tasks)
 
 learned_templates = get_data_driven_template_two_tasks(
-                    train_task1, train_task2, B=1000, seed=seed)
-
-seed = 42
-alpha = 0.05
-B = 1000
-k_max = 1000
-smoothing_fwhm = 4
+                    train_task1, train_task2, B=n_train, seed=seed)
+learned_templates_kmin = learned_templates.copy()
+learned_templates_kmin[:, :k_min] = np.zeros((n_train, k_min))
 
 if len(sys.argv) > 1:
     n_jobs = int(sys.argv[1])
@@ -50,17 +53,17 @@ test_task1s, test_task2s = df_tasks['task1'], df_tasks['task2']
 
 # Compute largest region sizes for 3 possible TDP values
 
-res_01 = compute_bounds(test_task1s, test_task2s, learned_templates, alpha,
+res_01 = compute_bounds(test_task1s, test_task2s, learned_templates_kmin, alpha,
                         0.95, k_max, B, smoothing_fwhm=smoothing_fwhm,
                         n_jobs=n_jobs,
                         seed=seed)
 
-res_02 = compute_bounds(test_task1s, test_task2s, learned_templates, alpha,
+res_02 = compute_bounds(test_task1s, test_task2s, learned_templates_kmin, alpha,
                         0.9, k_max, B, smoothing_fwhm=smoothing_fwhm,
                         n_jobs=n_jobs,
                         seed=seed)
 
-res_03 = compute_bounds(test_task1s, test_task2s, learned_templates, alpha,
+res_03 = compute_bounds(test_task1s, test_task2s, learned_templates_kmin, alpha,
                         0.8, k_max, B, smoothing_fwhm=smoothing_fwhm,
                         n_jobs=n_jobs,
                         seed=seed)
@@ -82,8 +85,8 @@ data_a = gen_boxplot_data(res_01)
 data_b = gen_boxplot_data(res_02)
 data_c = gen_boxplot_data(res_03)
 
-ticks = ['Calibrated Simes \n vs ARI', 'Notip vs ARI',
-         'Notip vs \n Calibrated Simes']
+ticks = ['Calibrated Simes \n vs ARI', 'Notip with kmin vs ARI',
+         'Notip with kmin vs \n Calibrated Simes']
 
 
 def set_box_color(bp, color):
@@ -142,5 +145,5 @@ plt.hlines(0, xmin=-1.5, xmax=8, color='black')
 plt.title(r'Detection rate variation for $\alpha = 0.05$ and various FDPs')
 plt.legend(loc=2, prop={'size': 8.5})
 plt.tight_layout()
-plt.savefig('/home/onyxia/work/Notip/figures/figure_4.pdf')
+plt.savefig('/home/onyxia/work/Notip/figures/figure_4_Notip_kmin.pdf')
 plt.show()
