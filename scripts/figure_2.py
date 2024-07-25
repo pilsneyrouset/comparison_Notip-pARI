@@ -12,7 +12,7 @@ fig_path = os.path.join(fig_path_, 'figures')
 sys.path.append(script_path)
 from posthoc_fmri import get_processed_input, calibrate_simes
 
-fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952) # changer une fois les données téléchargées
+fetch_neurovault(max_images=np.infty, mode='overwrite', collection_id=1952) # changer une fois les données téléchargées
 
 seed = 5
 

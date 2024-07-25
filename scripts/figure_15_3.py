@@ -24,7 +24,7 @@ k_max = 1000
 TDPs = [0.95, 0.9, 0.8]
 alphas = [0.05, 0.1, 0.2]
 
-k_mins = [1, 3, 9, 27, 45, 81, 100, 150, 243, 300, 729]
+k_mins = [0, 1, 3, 9, 27, 45, 81, 100]
 
 fig, axs = plt.subplots(3, 3, figsize=(12, 12))
 fig.tight_layout()

@@ -130,27 +130,27 @@ def compute_bounds_comparison(task1s, task2s, learned_templates,
 
 # Compute largest region sizes for 3 possible TDP values
 
-# res_01 = compute_bounds_comparison(test_task1s, test_task2s, learned_templates_kmin, alpha,
-#                                    0.95, k_max, B, smoothing_fwhm=smoothing_fwhm,
-#                                    n_jobs=n_jobs,
-#                                    seed=seed, k_min=k_min)
-# np.save('/home/onyxia/work/Notip/figures/res_01.npy', res_01)
+res_01 = compute_bounds_comparison(test_task1s, test_task2s, learned_templates_kmin, alpha,
+                                   0.95, k_max, B, smoothing_fwhm=smoothing_fwhm,
+                                   n_jobs=n_jobs,
+                                   seed=seed, k_min=k_min)
+np.save('/home/onyxia/work/Notip/figures/res_01.npy', res_01)
 
-# res_02 = compute_bounds_comparison(test_task1s, test_task2s, learned_templates_kmin, alpha,
-#                                    0.9, k_max, B, smoothing_fwhm=smoothing_fwhm,
-#                                    n_jobs=n_jobs,
-#                                    seed=seed, k_min=k_min)
-# np.save('/home/onyxia/work/Notip/figures/res_02.npy', res_02)
+res_02 = compute_bounds_comparison(test_task1s, test_task2s, learned_templates_kmin, alpha,
+                                   0.9, k_max, B, smoothing_fwhm=smoothing_fwhm,
+                                   n_jobs=n_jobs,
+                                   seed=seed, k_min=k_min)
+np.save('/home/onyxia/work/Notip/figures/res_02.npy', res_02)
 
-# res_03 = compute_bounds_comparison(test_task1s, test_task2s, learned_templates_kmin, alpha,
-#                                    0.8, k_max, B, smoothing_fwhm=smoothing_fwhm,
-#                                    n_jobs=n_jobs,
-#                                    seed=seed, k_min=k_min)
-# np.save('/home/onyxia/work/Notip/figures/res_03.npy', res_03)
+res_03 = compute_bounds_comparison(test_task1s, test_task2s, learned_templates_kmin, alpha,
+                                   0.8, k_max, B, smoothing_fwhm=smoothing_fwhm,
+                                   n_jobs=n_jobs,
+                                   seed=seed, k_min=k_min)
+np.save('/home/onyxia/work/Notip/figures/res_03.npy', res_03)
 
-res_01 = np.load("/home/onyxia/work/Notip/figures/res_01.npy")
-res_02 = np.load("/home/onyxia/work/Notip/figures/res_02.npy")
-res_01 = np.load("/home/onyxia/work/Notip/figures/res_01.npy")
+# res_01 = np.load("/home/onyxia/work/Notip/figures/res_01.npy")
+# res_02 = np.load("/home/onyxia/work/Notip/figures/res_02.npy")
+# res_03 = np.load("/home/onyxia/work/Notip/figures/res_03.npy")
 
 # multiple boxplot code adapted from
 # https://stackoverflow.com/questions/16592222/matplotlib-group-boxplots
