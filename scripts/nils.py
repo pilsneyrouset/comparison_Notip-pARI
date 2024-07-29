@@ -19,7 +19,7 @@ fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952)
 
 sys.path.append(script_path)
 from posthoc_fmri import compute_bounds, get_data_driven_template_two_tasks
-from sanssouci.lambda_calibration import calibrate_jer
+from sanssouci.lambda_calibration import calibrate_jer, calibrate_jer_param
 from posthoc_fmri import get_processed_input, ari_inference, calibrate_simes, calibrate_shifted_simes
 from sanssouci.reference_families import shifted_template, shifted_template_lambda
 
@@ -28,10 +28,10 @@ memory = Memory(location, mmap_mode='r', verbose=0)
 
 seed = 42
 alpha = 0.05
-B = 1000
+B = 10000
 n_train = 10000
 smoothing_fwhm = 4
-k_min = 0
+k_min = 27
 TDP = 0.8
 n_jobs = 1
 
@@ -49,34 +49,27 @@ fmri_input, nifti_masker = get_processed_input(
                                                 smoothing_fwhm=smoothing_fwhm)
 stats_, p_values = stats.ttest_1samp(fmri_input, 0)
 p = fmri_input.shape[1]
-pval0, calibrated_simes_tpl = calibrate_simes(fmri_input, alpha, k_max=p, B=B, n_jobs=n_jobs,
-                                              seed=seed)
         
-shifted_templates = np.array([shifted_template_lambda(p, p, k_min, lbd) for lbd in np.linspace(0, 1, n_train)])
-pari_dicho = calibrate_jer(alpha, shifted_templates,
-                           pval0, k_max=p, k_min=k_min)
+
 pval0, pari_calibrated = calibrate_shifted_simes(fmri_input, alpha, B=B, n_jobs=n_jobs, 
                                                  seed=seed, k_min=k_min)
+pari_dicho_calibrated_param = calibrate_jer_param(alpha, generate_template=shifted_template_lambda, pval0=pval0,
+                                  k_max=p, m=p, k_min=k_min, epsilon=0.0001)
 
-_, region_size_simes = sa.find_largest_region(p_values, calibrated_simes_tpl,
-                                              TDP,
-                                              nifti_masker)
-print("Région trouvée par Calibrated Simes :", region_size_simes)
+
+_, region_size_pari_calibrated_param = sa.find_largest_region(p_values, pari_dicho_calibrated_param,
+                                                              TDP,
+                                                              nifti_masker)
+print("Région trouvée par pARI dichotomie paramétrique :", region_size_pari_calibrated_param)
 
 _, region_size_pari_calibrated = sa.find_largest_region(p_values, pari_calibrated,
                                                         TDP,
                                                         nifti_masker)
-print("Région trouvée par pARI calibré :", region_size_pari_calibrated)
+print("Région trouvée par pARI Stat pivotale :", region_size_pari_calibrated)
 
-_, region_size_pari_dicho = sa.find_largest_region(p_values,
-                                                   pari_dicho,
-                                                   TDP,
-                                                   nifti_masker)
-print("Région trouvée par pARI dichotomie:", region_size_pari_dicho)
 
-plt.plot(pari_calibrated, label='pARI calibré')
-plt.plot(calibrated_simes_tpl, label='Calibrated Simes')
-plt.plot(pari_dicho, label='pARI dichotomie')
+plt.plot(pari_calibrated, label='pARI Statistique pivotale')
+plt.plot(pari_dicho_calibrated_param, label='pARI dichotomie paramétrique')
 plt.legend()
 plt.show()
 #%%
