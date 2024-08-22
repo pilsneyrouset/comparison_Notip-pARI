@@ -30,6 +30,7 @@ from nilearn._utils.niimg import safe_get_data
 from nilearn.reporting.get_clusters_table import _local_max
 from sanssouci.lambda_calibration import get_pivotal_stats, get_pivotal_stats_shifted
 from sanssouci.reference_families import inverse_shifted_template, shifted_template
+from sanssouci.reference_families import inverse_linear_template_kmin, linear_template_kmin
 from sanssouci.lambda_calibration import calibrate_jer
 
 def get_data_driven_template_two_tasks(
@@ -277,6 +278,51 @@ def calibrate_shifted_simes(fmri_input, alpha, B=100, n_jobs=1, seed=None, k_min
     shifted_simes_thr = lambda_quant * shifted_template(p, p, k_min=k_min)
 
     return pval0, shifted_simes_thr
+
+
+def calibrate_truncated_simes(fmri_input, alpha, B=100, n_jobs=1, seed=None, k_min=0):
+    """
+    Perform calibration using the Simes template
+
+    Parameters
+    ----------
+
+    fmri_input : array of shape (n_subjects, p)
+        Masked fMRI data
+    alpha : float
+        Risk level
+    B : int
+        number of permutations at inference step
+    n_jobs : int
+        number of CPUs used for computation. Default = 1
+    seed : int
+
+    Returns
+    -------
+
+    pval0 : matrix of shape (B, p)
+        Permuted p-values
+    simes_thr : list of length k_max
+        Calibrated Simes template
+    """
+    p = fmri_input.shape[1]  # number of voxels
+
+    # Compute the permuted p-values
+    pval0 = sa.get_permuted_p_values_one_sample(fmri_input,
+
+                                                B=B,
+
+                                                seed=seed,
+
+                                                n_jobs=n_jobs)
+
+    # Compute pivotal stats and alpha-level quantile
+    piv_stat = get_pivotal_stats_shifted(pval0, inverse_template=inverse_linear_template_kmin, k_min=k_min)
+    lambda_quant = np.quantile(piv_stat, alpha)
+    # Compute chosen template
+    truncated_simes_thr = linear_template_kmin(p, p, k_min, lambda_quant)
+
+    return pval0, truncated_simes_thr
 
 
 def ari_inference(p_values, tdp, alpha, nifti_masker):
