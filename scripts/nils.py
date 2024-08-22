@@ -15,29 +15,70 @@ fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
 fig_path = os.path.join(fig_path_, 'figures')
 
 # Fetch data
-fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952)
+fetch_neurovault(max_images=np.inf, mode='download_new', collection_id=1952)
 
 sys.path.append(script_path)
+
 from posthoc_fmri import compute_bounds, get_data_driven_template_two_tasks
 from sanssouci.lambda_calibration import calibrate_jer, calibrate_jer_param
-from posthoc_fmri import get_processed_input, ari_inference, calibrate_simes, calibrate_shifted_simes
-from sanssouci.reference_families import shifted_template, shifted_template_lambda
+from posthoc_fmri import get_processed_input, ari_inference, calibrate_simes, calibrate_shifted_simes, calibrate_truncated_simes
+from sanssouci.reference_families import shifted_template, shifted_template_lambda, linear_template_kmin
 
 location = './cachedir'
 memory = Memory(location, mmap_mode='r', verbose=0)
 
 seed = 42
 alpha = 0.05
-B = 10000
+B = 1000
 n_train = 10000
 smoothing_fwhm = 4
+k_max = 1000
 k_min = 27
 TDP = 0.8
 n_jobs = 1
 
-location = './cachedir'
-memory = Memory(location, mmap_mode='r', verbose=0)
+train_task1 = 'task001_vertical_checkerboard_vs_baseline'
+train_task2 = 'task001_horizontal_checkerboard_vs_baseline'
 
+get_data_driven_template_two_tasks = memory.cache(
+
+                                    get_data_driven_template_two_tasks)
+learned_templates = get_data_driven_template_two_tasks(
+
+                    train_task1, train_task2, B=n_train, seed=seed)
+print("La phase d'entrainement de Notip est terminée")
+#%%
+#Comparaison des kmin
+templates = {}
+
+df_tasks = pd.read_csv(os.path.join(script_path, 'contrast_list2.csv'))
+test_task1s, test_task2s = df_tasks['task1'], df_tasks['task2']
+task1 = test_task1s[25]
+task2 = test_task2s[25]
+
+fmri_input, nifti_masker = get_processed_input(
+
+                                                task1, task2,
+
+                                                smoothing_fwhm=smoothing_fwhm)
+stats_, p_values = stats.ttest_1samp(fmri_input, 0)
+p = fmri_input.shape[1]
+
+for k_min in [0, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]:
+    learned_templates_kmin = learned_templates.copy()
+    learned_templates_kmin[:, :k_min] = np.zeros((n_train, k_min))
+    pval0, simes_tpl = calibrate_simes(fmri_input, alpha, k_max=p, B=B, n_jobs=n_jobs, seed=seed)
+    notip_tpl_kmin = calibrate_jer(alpha, learned_templates_kmin, pval0=pval0,
+                                   k_max=k_max, k_min=k_min)
+    templates[k_min] = notip_tpl_kmin
+
+for k in list(templates.keys()):
+    plt.plot(templates[k], label=f'Notip + kmin = {k}') 
+plt.legend()
+plt.show()
+#%%
+#Comparaison des différentes méthodes statistiques pivotale vs dichotomie
+k_min = 27
 df_tasks = pd.read_csv(os.path.join(script_path, 'contrast_list2.csv'))
 
 test_task1s, test_task2s = df_tasks['task1'], df_tasks['task2']
@@ -45,120 +86,43 @@ task1 = test_task1s[25]
 task2 = test_task2s[25]
 
 fmri_input, nifti_masker = get_processed_input(
+
                                                 task1, task2,
+
                                                 smoothing_fwhm=smoothing_fwhm)
 stats_, p_values = stats.ttest_1samp(fmri_input, 0)
 p = fmri_input.shape[1]
-        
+pval0, calibrated_shifted_simes_tpl = calibrate_shifted_simes(fmri_input, alpha, B=B, n_jobs=n_jobs, seed=seed, k_min=k_min)
 
-pval0, pari_calibrated = calibrate_shifted_simes(fmri_input, alpha, B=B, n_jobs=n_jobs, 
-                                                 seed=seed, k_min=k_min)
-pari_dicho_calibrated_param = calibrate_jer_param(alpha, generate_template=shifted_template_lambda, pval0=pval0,
-                                  k_max=p, m=p, k_min=k_min, epsilon=0.0001)
+dicho_shifted_simes_tpl = calibrate_jer_param(alpha, generate_template=shifted_template_lambda, pval0=pval0, k_max=p, m=p, k_min=k_min, epsilon=0.0001)
 
-
-_, region_size_pari_calibrated_param = sa.find_largest_region(p_values, pari_dicho_calibrated_param,
-                                                              TDP,
-                                                              nifti_masker)
-print("Région trouvée par pARI dichotomie paramétrique :", region_size_pari_calibrated_param)
-
-_, region_size_pari_calibrated = sa.find_largest_region(p_values, pari_calibrated,
-                                                        TDP,
-                                                        nifti_masker)
-print("Région trouvée par pARI Stat pivotale :", region_size_pari_calibrated)
-
-
-plt.plot(pari_calibrated, label='pARI Statistique pivotale')
-plt.plot(pari_dicho_calibrated_param, label='pARI dichotomie paramétrique')
+plt.plot(calibrated_shifted_simes_tpl, label='pARI statistique pivotale')
+plt.plot(dicho_shifted_simes_tpl, label='pARI dichotomie paramétrique')
 plt.legend()
 plt.show()
 #%%
-## Vérification que pARI avec kmin=0 coïncide avec calibrated_simes
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-import sys
-from joblib import Memory
-from scipy import stats
-import os
-import sanssouci as sa
-import warnings
 
-from nilearn.datasets import fetch_neurovault
+#Comparaison avec l'idée de Simes tronqué
 
-script_path = os.path.dirname(__file__)
-fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
-fig_path = os.path.join(fig_path_, 'figures')
-
-fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952)
-
-sys.path.append(script_path)
-from posthoc_fmri import compute_bounds, get_data_driven_template_two_tasks
-from sanssouci.lambda_calibration import calibrate_jer
-from posthoc_fmri import get_processed_input, ari_inference, calibrate_simes, calibrate_shifted_simes
-from sanssouci.reference_families import shifted_template
-from numpy.testing import assert_almost_equal
-
-location = './cachedir'
-memory = Memory(location, mmap_mode='r', verbose=0)
-
-seed = 42
-alpha = 0.05
-B = 5
-n_train = 10000
-k_max = 1000
-smoothing_fwhm = 4
-k_min = 0
-TDP = 0.8
-n_jobs = 1
-
-location = './cachedir'
-memory = Memory(location, mmap_mode='r', verbose=0)
+k_min = 27
 df_tasks = pd.read_csv(os.path.join(script_path, 'contrast_list2.csv'))
 test_task1s, test_task2s = df_tasks['task1'], df_tasks['task2']
+task1 = test_task1s[25]
+task2 = test_task2s[25]
 
-for n_train in [10000]:
-    simes_regions = []
-    shifted_simes_regions = []
-    for i in range(len(test_task1s)):
-        print(i)
-        fmri_input, nifti_masker = get_processed_input(test_task1s[i], test_task2s[i])
-        p = fmri_input.shape[1]
-        stats_, p_values = stats.ttest_1samp(fmri_input, 0)
-        pval0, simes_thr = calibrate_simes(fmri_input, alpha,
-                                        k_max=p, B=B, n_jobs=n_jobs, seed=seed)
-        
-        shifted_templates = np.array([lambd*shifted_template(p, p, k_min=k_min) for lambd in np.linspace(0, 1, n_train)])
-        calibrated_shifted_simes_tpl = calibrate_jer(alpha, shifted_templates,
-                                                    pval0, k_max=p, # est-ce que c'est le bon p ?
-                                                    k_min=k_min)
-        # pval0, shifted_template_thr = calibrate_shifted_simes(fmri_input, alpha,
-        #                                     B=B, n_jobs=n_jobs, seed=seed, k_min=0)
-        _, region_size_simes = sa.find_largest_region(p_values, simes_thr,
-                                                            TDP,
-                                                            nifti_masker)
-        _, region_size_shifted_simes = sa.find_largest_region(p_values, calibrated_shifted_simes_tpl,
-                                                            TDP,
-                                                            nifti_masker)
-        shifted_simes_regions.append(region_size_shifted_simes)
-        simes_regions.append(region_size_simes)
-    np.save(f'/home/onyxia/work/Notip/figures/shifted_simes_regions_{n_train}.npy', shifted_simes_regions)
-    np.save(f'/home/onyxia/work/Notip/figures/simes_regions_{n_train}.npy', simes_regions)
-#%%
-import matplotlib.pyplot as plt
-import numpy as np
+fmri_input, nifti_masker = get_processed_input(
 
-regions_shifted_simes_100 = np.load("/home/onyxia/work/Notip/figures/shifted_simes_regions_100.npy")
-regions_shifted_simes_1000 = np.load("/home/onyxia/work/Notip/figures/shifted_simes_regions_1000.npy")
-regions_shifted_simes_5000 = np.load("/home/onyxia/work/Notip/figures/shifted_simes_regions_5000.npy")
-regions_shifted_simes_10000 = np.load("/home/onyxia/work/Notip/figures/shifted_simes_regions_10000.npy")
-regions_simes = np.load("/home/onyxia/work/Notip/figures/simes_regions_100.npy")
+                                                task1, task2,
 
-plt.figure()
-plt.plot(regions_shifted_simes_100, label='pARI with n_train=100')
-plt.plot(regions_shifted_simes_1000, label='pARI with n_train=1000')
-plt.plot(regions_shifted_simes_5000, label='pARI with n_train=5000')
-plt.plot(regions_shifted_simes_10000, label='pARI with n_train=10000')
-plt.plot(regions_simes, label='Simes')
+                                                smoothing_fwhm=smoothing_fwhm)
+stats_, p_values = stats.ttest_1samp(fmri_input, 0)
+p = fmri_input.shape[1]
+pval0, calibrated_simes_tpl = calibrate_simes(fmri_input, alpha, k_max=p, B=B, n_jobs=n_jobs, seed=seed)
+
+truncated_simes_tpl1 = calibrate_jer_param(alpha, generate_template=linear_template_kmin, pval0=pval0, k_max=p, m=p, k_min=k_min, epsilon=0.001)
+pval0, truncated_simes_tpl2 = calibrate_truncated_simes(fmri_input, alpha, B=B, n_jobs=n_jobs, seed=seed, k_min=k_min)
+
+plt.plot(truncated_simes_tpl1, label='Calibrated Simes tronqué dochotomie paramétrique')
+plt.plot(truncated_simes_tpl2, label='Calibrated Simes tronqué statistique pivotale')
 plt.legend()
 plt.show()
