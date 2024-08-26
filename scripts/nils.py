@@ -29,7 +29,7 @@ memory = Memory(location, mmap_mode='r', verbose=0)
 
 seed = 42
 alpha = 0.05
-B = 1000
+B = 10000
 n_train = 10000
 smoothing_fwhm = 4
 k_max = 1000
@@ -69,7 +69,7 @@ notip_tpl_kmin0 = calibrate_jer(alpha, learned_templates_kmin, pval0=pval0,
                                    k_max=k_max, k_min=k_min)
 _, region_notip_0 = sa.find_largest_region(p_values, notip_tpl_kmin0, TDP, nifti_masker)
     
-plt.plot(notip_tpl_kmin0, label=f'Notip + kmin = {k_min}') 
+plt.plot(notip_tpl_kmin0, label=f'Notip + kmin = {k_min} /{region_notip_0} voxels') 
 plt.legend()
 plt.show()
 #%%
@@ -181,6 +181,23 @@ plt.plot(notip_tpl_kmin2000, label=f'Notip + kmin = {k_min} /{region_notip_2000}
 plt.legend()
 plt.show()
 #%%
+#Comparaison des différents templates de Notip
+
+plt.title('Templates Notip pour différents kmin')
+
+plt.plot(notip_tpl_kmin0, label=f'Notip + kmin = {0} /{region_notip_0} voxels') 
+plt.plot(notip_tpl_kmin10, label=f'Notip + kmin = {10} /{region_notip_10} voxels') 
+plt.plot(notip_tpl_kmin20, label=f'Notip + kmin = {20} /{region_notip_20} voxels')
+plt.plot(notip_tpl_kmin27, label=f'Notip + kmin = {27} /{region_notip_27} voxels')
+plt.plot(notip_tpl_kmin50, label=f'Notip + kmin = {50} /{region_notip_50} voxels') 
+plt.plot(notip_tpl_kmin100, label=f'Notip + kmin = {100} /{region_notip_100} voxels')
+plt.plot(notip_tpl_kmin200, label=f'Notip + kmin = {200} /{region_notip_200} voxels') 
+plt.plot(notip_tpl_kmin500, label=f'Notip + kmin = {500} /{region_notip_500} voxels') 
+plt.legend()
+
+plt.savefig('/home/onyxia/work/Notip/figures/Comparaison_Notip.png')
+plt.show()
+#%%
 #Comparaison des différentes méthodes statistiques pivotale vs dichotomie
 k_min = 27
 df_tasks = pd.read_csv(os.path.join(script_path, 'contrast_list2.csv'))
@@ -202,13 +219,22 @@ _, region_calibrated_shifted_simes_tpl = sa.find_largest_region(p_values, calibr
 dicho_shifted_simes_tpl = calibrate_jer_param(alpha, generate_template=shifted_template_lambda, pval0=pval0, k_max=p, m=p, k_min=k_min, epsilon=0.0001)
 _, region_dicho_shifted_simes_tpl = sa.find_largest_region(p_values, dicho_shifted_simes_tpl, TDP, nifti_masker)
 
+plt.figure(figsize=(15, 8))
+plt.suptitile('Templates pARI')
 
+plt.subplot(1, 2, 1)
 plt.plot(calibrated_shifted_simes_tpl, label=f'pARI statistique pivotale /{region_calibrated_shifted_simes_tpl} voxels')
 plt.plot(dicho_shifted_simes_tpl, label=f'pARI dichotomie paramétrique /{region_dicho_shifted_simes_tpl} voxels')
 plt.legend()
+
+plt.subplot(1, 2, 2)
+plt.plot(calibrated_shifted_simes_tpl[:100], label=f'pARI statistique pivotale /{region_calibrated_shifted_simes_tpl} voxels')
+plt.plot(dicho_shifted_simes_tpl[:100], label=f'pARI dichotomie paramétrique /{region_dicho_shifted_simes_tpl} voxels')
+plt.legend()
+
+plt.savefig('/home/onyxia/work/Notip/figures/pARI.png')
 plt.show()
 #%%
-
 #Comparaison avec l'idée de Simes tronqué
 
 k_min = 27
@@ -234,9 +260,20 @@ _, region_truncated_simes_tpl1 = sa.find_largest_region(p_values, truncated_sime
 pval0, truncated_simes_tpl2 = calibrate_truncated_simes(fmri_input, alpha, B=B, n_jobs=n_jobs, seed=seed, k_min=k_min)
 _, region_truncated_simes_tpl2 = sa.find_largest_region(p_values, truncated_simes_tpl2, TDP, nifti_masker)
 
+plt.figure(figsize=(15, 8))
+plt.suptitle('Templates Calibrated Simes / Calibrated Simes tronqué')
 
+plt.subplot(1, 2, 1)
 plt.plot(truncated_simes_tpl1, label=f'Calibrated Simes tronqué dochotomie paramétrique /{region_truncated_simes_tpl1} voxels')
 plt.plot(truncated_simes_tpl2, label=f'Calibrated Simes tronqué statistique pivotale /{region_truncated_simes_tpl2} voxels')
 plt.plot(calibrated_simes_tpl, label=f'Calibrated Simes /{region_calibrated_simes_tpl} voxels')
 plt.legend()
+
+plt.subplot(1, 2, 2)
+plt.plot(truncated_simes_tpl1[:100], label=f'Calibrated Simes tronqué dochotomie paramétrique /{region_truncated_simes_tpl1} voxels')
+plt.plot(truncated_simes_tpl2[:100], label=f'Calibrated Simes tronqué statistique pivotale /{region_truncated_simes_tpl2} voxels')
+plt.plot(calibrated_simes_tpl[:100], label=f'Calibrated Simes /{region_calibrated_simes_tpl} voxels')
+plt.legend()
+
+plt.savefig('/home/onyxia/work/Notip/figures/Calibrates_simes.png')
 plt.show()
