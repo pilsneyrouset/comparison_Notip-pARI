@@ -22,9 +22,11 @@ from tqdm import tqdm
 from string import ascii_lowercase
 from scipy import ndimage
 
+from scripts.posthoc_fmri import calibrate_shifted_simes
 from nilearn.image import threshold_img
 from nilearn.image.resampling import coord_transform
 from nilearn._utils import check_niimg_3d
+
 from nilearn._utils.niimg import safe_get_data
 
 from nilearn.reporting.get_clusters_table import _local_max
@@ -540,7 +542,7 @@ def report_fdp_tdp(p_values, cutoff, beta_true, n_clusters):
 def get_clusters_table_TDP(stat_img, stat_threshold, fmri_input,
                            learned_templates, alpha=0.05,
                            k_max=1000, B=1000, cluster_threshold=None,
-                           two_sided=False, min_distance=8., seed=None):
+                           two_sided=False, min_distance=8., seed=None, delta=27):
     """Creates pandas dataframe with img cluster statistics.
     Parameters
     ----------
@@ -576,7 +578,7 @@ def get_clusters_table_TDP(stat_img, stat_threshold, fmri_input,
         rather than any peaks/subpeaks.
     """
     cols = ['Cluster ID', 'X', 'Y', 'Z', 'Peak Stat', 'Cluster Size (mm3)',
-            'TDP (ARI)', 'TDP (Calibrated Simes)', 'TDP (Learned)']
+            'TDP (ARI)', 'TDP (Calibrated Simes)', 'TDP (Learned)', 'TDP (pARI)']
     # Replace None with 0
     cluster_threshold = 0 if cluster_threshold is None else cluster_threshold
     # print(cluster_threshold)
@@ -591,6 +593,7 @@ def get_clusters_table_TDP(stat_img, stat_threshold, fmri_input,
     pval0, simes_thr = calibrate_simes(fmri_input, alpha,
                                        k_max=k_max, B=B, seed=seed)
     learned_thr = sa.calibrate_jer(alpha, learned_templates, pval0, k_max)
+    pval0, pari_thr = calibrate_shifted_simes(fmri_input, alpha, B=B, seed=seed, k_min=delta)
 
     # Apply threshold(s) to image
     stat_img = threshold_img(
@@ -650,6 +653,7 @@ def get_clusters_table_TDP(stat_img, stat_threshold, fmri_input,
             ari_tdp = sa.min_tdp(cluster_p_values, ari_thr)
             simes_tdp = sa.min_tdp(cluster_p_values, simes_thr)
             learned_tdp = sa.min_tdp(cluster_p_values, learned_thr)
+            pari_tdp = sa.min_tdp(cluster_p_values, pari_thr)
             cluster_size_mm = int(np.sum(cluster_mask) * voxel_size)
 
             # Get peaks, subpeaks and associated statistics
@@ -664,6 +668,7 @@ def get_clusters_table_TDP(stat_img, stat_threshold, fmri_input,
                     subpeak_ijk[:, 0],
                     subpeak_ijk[:, 1],
                     subpeak_ijk[:, 2],
+                    subpeak_ijk[:, 3],
                     stat_img.affine,
                 )
             ).tolist()
@@ -678,11 +683,13 @@ def get_clusters_table_TDP(stat_img, stat_threshold, fmri_input,
                         subpeak_xyz[subpeak, 0],
                         subpeak_xyz[subpeak, 1],
                         subpeak_xyz[subpeak, 2],
+                        subpeak_xyz[subpeak, 3],
                         "{0:.2f}".format(subpeak_vals[subpeak]),
                         cluster_size_mm,
                         "{0:.2f}".format(ari_tdp),
                         "{0:.2f}".format(simes_tdp),
                         "{0:.2f}".format(learned_tdp),
+                        "{0:.2f}".format(pari_tdp),
                     ]
                 else:
                     # Subpeak naming convention is cluster num+letter:
@@ -696,7 +703,9 @@ def get_clusters_table_TDP(stat_img, stat_threshold, fmri_input,
                         subpeak_xyz[subpeak, 0],
                         subpeak_xyz[subpeak, 1],
                         subpeak_xyz[subpeak, 2],
+                        subpeak_xyz[subpeak, 3],
                         "{0:.2f}".format(subpeak_vals[subpeak]),
+                        '',
                         '',
                         '',
                         '',
@@ -719,7 +728,7 @@ def get_clusters_table_with_TDP(stat_img, fmri_input, stat_threshold=3,
                                 alpha=0.05,
                                 k_max=1000, n_permutations=1000, cluster_threshold=None,
                                 methods=['Notip'],
-                                two_sided=False, min_distance=8., n_jobs=2, seed=None):
+                                two_sided=False, min_distance=8., n_jobs=2, seed=None, delta=27):
     """Creates pandas dataframe with img cluster statistics.
     Parameters
     ----------
@@ -773,6 +782,7 @@ def get_clusters_table_with_TDP(stat_img, fmri_input, stat_threshold=3,
                                                              seed=None)
     learned_templates = np.sort(learned_templates_, axis=0)
     learned_thr = sa.calibrate_jer(alpha, learned_templates, pval0, k_max)
+    pval0, pari_thr = calibrate_shifted_simes(fmri_input, alpha, B=n_permutations, seed=seed, k_min=delta)
 
     # Apply threshold(s) to image
     stat_img = threshold_img(
@@ -833,6 +843,7 @@ def get_clusters_table_with_TDP(stat_img, fmri_input, stat_threshold=3,
             simes_tdp = sa.min_tdp(cluster_p_values, simes_thr)
             learned_tdp = sa.min_tdp(cluster_p_values, learned_thr)
             cluster_size_mm = int(np.sum(cluster_mask) * voxel_size)
+            pari_tdp = sa.min_tdp(cluster_p_values, pari_thr)
 
             # Get peaks, subpeaks and associated statistics
             subpeak_ijk, subpeak_vals = _local_max(
@@ -855,9 +866,9 @@ def get_clusters_table_with_TDP(stat_img, fmri_input, stat_threshold=3,
             n_subpeaks = np.min((len(subpeak_vals), 4))
             for subpeak in range(n_subpeaks):
                 if subpeak == 0:
-                    if methods == ['ARI', 'Notip']:
+                    if methods == ['ARI', 'Notip', 'pARI']:
                         cols = ['Cluster ID', 'X', 'Y', 'Z', 'Peak Stat', 'Cluster Size (mm3)',
-                                    'TDP (ARI)', 'TDP (Notip)']
+                                    'TDP (ARI)', 'TDP (Notip)', 'TDP (pARI)']
                         row = [
                             c_id + 1,
                             subpeak_xyz[subpeak, 0],
@@ -866,7 +877,8 @@ def get_clusters_table_with_TDP(stat_img, fmri_input, stat_threshold=3,
                             "{0:.2f}".format(subpeak_vals[subpeak]),
                             cluster_size_mm,
                             "{0:.2f}".format(ari_tdp),
-                            "{0:.2f}".format(learned_tdp)]
+                            "{0:.2f}".format(learned_tdp),
+                            "{0:.2f}".format(pari_tdp)]
                     else:
                         cols = ['Cluster ID', 'X', 'Y', 'Z', 'Peak Stat', 'Cluster Size (mm3)',
                                 'TDP (Notip)']

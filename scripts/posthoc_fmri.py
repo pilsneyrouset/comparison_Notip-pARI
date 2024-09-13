@@ -656,7 +656,7 @@ def report_fdp_tdp(p_values, cutoff, beta_true, n_clusters):
 def get_clusters_table_TDP(stat_img, stat_threshold, fmri_input,
                            learned_templates, alpha=0.05,
                            k_max=1000, B=1000, cluster_threshold=None,
-                           two_sided=False, min_distance=8., seed=None):
+                           two_sided=False, min_distance=8., seed=None, delta=27):
     """Creates pandas dataframe with img cluster statistics.
     Parameters
     ----------
@@ -692,7 +692,7 @@ def get_clusters_table_TDP(stat_img, stat_threshold, fmri_input,
         rather than any peaks/subpeaks.
     """
     cols = ['Cluster ID', 'X', 'Y', 'Z', 'Peak Stat', 'Cluster Size (mm3)',
-            'TDP (ARI)', 'TDP (Calibrated Simes)', 'TDP (Learned)']
+            'TDP (ARI)', 'TDP (Calibrated Simes)', 'TDP (Learned)', 'TDP (pARI)']
     # Replace None with 0
     cluster_threshold = 0 if cluster_threshold is None else cluster_threshold
     # print(cluster_threshold)
@@ -707,6 +707,7 @@ def get_clusters_table_TDP(stat_img, stat_threshold, fmri_input,
     pval0, simes_thr = calibrate_simes(fmri_input, alpha,
                                        k_max=k_max, B=B, seed=seed)
     learned_thr = sa.calibrate_jer(alpha, learned_templates, pval0, k_max)
+    pval0, pari_thr = calibrate_shifted_simes(fmri_input, alpha, B=B, seed=seed, k_min=delta)
 
     # Apply threshold(s) to image
     stat_img = threshold_img(
@@ -766,6 +767,7 @@ def get_clusters_table_TDP(stat_img, stat_threshold, fmri_input,
             ari_tdp = sa.min_tdp(cluster_p_values, ari_thr)
             simes_tdp = sa.min_tdp(cluster_p_values, simes_thr)
             learned_tdp = sa.min_tdp(cluster_p_values, learned_thr)
+            pari_tdp = sa.min_tdp(cluster_p_values, pari_thr)
             cluster_size_mm = int(np.sum(cluster_mask) * voxel_size)
 
             # Get peaks, subpeaks and associated statistics
@@ -799,6 +801,7 @@ def get_clusters_table_TDP(stat_img, stat_threshold, fmri_input,
                         "{0:.2f}".format(ari_tdp),
                         "{0:.2f}".format(simes_tdp),
                         "{0:.2f}".format(learned_tdp),
+                        "{0:.2f}".format(pari_tdp),
                     ]
                 else:
                     # Subpeak naming convention is cluster num+letter:
