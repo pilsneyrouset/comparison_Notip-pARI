@@ -21,6 +21,8 @@ from tqdm import tqdm
 
 from string import ascii_lowercase
 from scipy import ndimage
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from scripts.posthoc_fmri import calibrate_shifted_simes
 from nilearn.image import threshold_img
