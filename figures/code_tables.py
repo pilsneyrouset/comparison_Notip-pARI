@@ -34,6 +34,7 @@ test_task1s, test_task2s = df_tasks['task1'], df_tasks['task2']
 z_thresholds = [3, 3.5, 4, 4.5, 5, 5.5]
 
 for i in range(len(test_task1s)):
+    print('number of task :', i)
     task1 = test_task1s[i]
     task2 = test_task2s[i]
     path = 'task' + str(i) 
@@ -43,14 +44,16 @@ for i in range(len(test_task1s)):
     z_vals = norm.isf(p_values)
     z_map = nifti_masker.inverse_transform(z_vals)
 
+    print('computations start')
     for z in z_thresholds:
+        print('z :', z)
         df = get_clusters_table_with_TDP(
         z_map, 
         fmri_input, 
-        n_permutations=1000,
+        n_permutations=200,
         stat_threshold=z,
         methods=['ARI', 'Notip', 'pARI'])
-        df.to_csv(path + '_z_trehsold_' + str(z_val) + '.csv', index=False)
+        df.to_csv(path + '_z_trehsold_' + str(z) + '.csv', index=False)
 
 
 
