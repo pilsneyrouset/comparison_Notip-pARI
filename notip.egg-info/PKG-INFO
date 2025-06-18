@@ -1,4 +1,4 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.4
 Name: notip
 Version: 0.1.2
 Summary: Nonparametric True Discovery Proportion control for brain imaging
@@ -19,6 +19,15 @@ Requires-Dist: matplotlib
 Requires-Dist: pandas
 Requires-Dist: joblib
 Requires-Dist: tqdm
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: download-url
+Dynamic: home-page
+Dynamic: requires-dist
+Dynamic: summary
 
 # NOTIP: Non-parametric True Discovery Proportion control for brain imaging
 

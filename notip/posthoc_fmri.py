@@ -916,6 +916,8 @@ def get_clusters_table_with_TDP(stat_img, fmri_input, stat_threshold=3,
         no_clusters_found = False
 
     if no_clusters_found:
+        cols = ['Cluster ID', 'X', 'Y', 'Z', 'Peak Stat', 'Cluster Size (mm3)',
+                                    'TDP (ARI)', 'TDP (Notip)', 'TDP (pARI)']
         df = pd.DataFrame(columns=cols)
     else:
         df = pd.DataFrame(columns=cols, data=rows)
