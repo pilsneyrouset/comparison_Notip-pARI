@@ -43,6 +43,7 @@ for i in range(len(test_task1s)):
     stats_, p_values = stats.ttest_1samp(fmri_input, 0)
     z_vals = norm.isf(p_values)
     z_map = nifti_masker.inverse_transform(z_vals)
+    os.makedirs(path, exist_ok=True)
 
     print('computations start')
     for z in z_thresholds:
@@ -53,7 +54,9 @@ for i in range(len(test_task1s)):
         n_permutations=200,
         stat_threshold=z,
         methods=['ARI', 'Notip', 'pARI'])
-        df.to_csv(path + '_z_trehsold_' + str(z) + '.csv', index=False)
+        output_file = os.path.join(path, f'z_threshold_{z}.csv')
+        print(output_file)
+        df.to_csv(output_file, index=False)
 
 
 
