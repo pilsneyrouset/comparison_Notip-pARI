@@ -51,10 +51,10 @@ for i in range(len(test_task1s)):
         df = get_clusters_table_with_TDP(
         z_map, 
         fmri_input, 
-        n_permutations=200,
+        n_permutations=1000,
         stat_threshold=z,
         methods=['ARI', 'Notip', 'pARI'])
-        output_file = os.path.join(path, f'z_threshold_{z}.csv')
+        output_file = os.path.join(path, f'1000_perm_z_threshold_{z}.csv')
         print(output_file)
         df.to_csv(output_file, index=False)
 
