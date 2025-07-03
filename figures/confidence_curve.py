@@ -50,13 +50,13 @@ memory = Memory(location, mmap_mode='r', verbose=0)
 train_task1 = 'task001_vertical_checkerboard_vs_baseline'
 train_task2 = 'task001_horizontal_checkerboard_vs_baseline'
 
-print("Début de la phase d'entraînement de Notip")
+print("Start Notip training")
 get_data_driven_template_two_tasks = memory.cache(
                                     get_data_driven_template_two_tasks)
 
 learned_templates = get_data_driven_template_two_tasks(
                     train_task1, train_task2, B=n_train, seed=seed)
-print("La phase d'entrainement de Notip est terminée")
+print("End of Notip training")
 
 if len(sys.argv) > 1:
     n_jobs = int(sys.argv[1])
@@ -82,20 +82,20 @@ p = fmri_input.shape[1]
 stat_map_nonzero = stat_map_[stat_map_ != 0]
 hommel = _compute_hommel_value(stat_map_nonzero, alpha)
 
-# ari_thr = sa.linear_template(alpha, hommel, hommel)
-# TDP_ARI = curve_min_tdp(p_values, ari_thr)
-# np.save("TDP/TDP_ARI.npy", TDP_ARI)
-# print("Les TDP de ARI ont été enregistrés")
+ari_thr = sa.linear_template(alpha, hommel, hommel)
+TDP_ARI = curve_min_tdp(p_values, ari_thr)
+np.save("TDP/TDP_ARI.npy", TDP_ARI)
+print("TDP ARI saved")
 
 pval0, _ = calibrate_simes(fmri_input, alpha,k_max=k_max, B=B, seed=seed)
 
 calibrated_tpl = calibrate_jer(alpha, learned_templates, pval0, k_max)
 TDP_notip = curve_min_tdp(p_values, calibrated_tpl)
 np.save("TDP/TDP_notip.npy", TDP_notip)
-print("Les TDP de Notip ont été enregistrés")
+print("TDP Notip saved")
 
 pval0, pari_thr = calibrate_shifted_simes(fmri_input, alpha, B=B, seed=seed, k_min=delta)
 TDP_pARI = curve_min_tdp(p_values, pari_thr)
 np.save("TDP/TDP_pARI.npy", TDP_pARI)
-print("Les TDP de pARI ont été enregistrés")
+print("TDP pARI saved")
 
