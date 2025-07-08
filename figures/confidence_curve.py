@@ -33,13 +33,13 @@ from sanssouci.post_hoc_bounds import curve_min_tdp
 
 # Paramètres
 seed = 42
-alpha = 0.05
+alpha = 0.1
 B = 10000
 n_train = 10000
 smoothing_fwhm = 4
 k_max = 1000
 delta = 27
-n_jobs = 40
+n_jobs = 36
 
 # Fetch data
 fetch_neurovault(max_images=np.inf, mode='download_new', collection_id=1952)
@@ -93,32 +93,30 @@ def process_task(i):
     ari_thr = sa.linear_template(alpha, hommel, hommel)
     TDP_ARI = curve_min_tdp(p_values, ari_thr)
     np.save(f"task{i}/TDP_ARI_{alpha}.npy", TDP_ARI)
-    print("TDP ARI saved")
+    print(f"TDP ARI saved{i}")
 
-    print("Calcul de pval0")
+    print(f"Calcul de pval0{i}")
     pval0, _ = calibrate_simes(fmri_input, alpha, k_max=k_max, B=B, seed=seed)
 
     # Entraînement de Notip sur le dataset d'inférence
     training_seed = 23
     train_task1 = test_task1s[i]
     train_task2 = test_task2s[i]
-    print("Start Notip training")
-    get_data_driven_template_two_tasks = memory.cache(
-                                        get_data_driven_template_two_tasks)
+    print(f"Start Notip training{i}")
     learned_templates = get_data_driven_template_two_tasks(
                         train_task1, train_task2, B=n_train, seed=training_seed)
-    print("End of Notip training")
+    print(f"End of Notip training{i}")
     # Calcul du TDP pour Notip
     calibrated_tpl = calibrate_jer(alpha, learned_templates, pval0, k_max)
     TDP_notip = curve_min_tdp(p_values, calibrated_tpl)
     np.save(f"task{i}/TDP_Notip_{alpha}.npy", TDP_notip)
-    print("TDP Notip saved")
+    print(f"TDP Notip saved{i}")
 
     # Calcul du TDP pour pARI
     pval0, pari_thr = calibrate_shifted_simes(fmri_input, alpha, B=B, seed=seed, k_min=delta)
     TDP_pARI = curve_min_tdp(p_values, pari_thr)
     np.save(f"task{i}/TDP_pARI_{alpha}.npy", TDP_pARI)
-    print("TDP pARI saved")
+    print(f"TDP pARI saved{i}")
 
 
 from joblib import Parallel, delayed
