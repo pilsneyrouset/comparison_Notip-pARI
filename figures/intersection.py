@@ -23,11 +23,10 @@ def first_crossing_idx(tdp_a, tdp_b):
     
     delta = tdp_a - tdp_b
     
-    # Cherche le premier passage de positif (ou 0) à négatif
     for i in range(1, len(delta)):
         if delta[i-1] > 0 and delta[i] <= 0:
             return i  # indice du croisement
-    
+        
     return None
 
 # Données du dataset
@@ -45,4 +44,4 @@ for i in range(len(test_task1s)):
     data.append({'contraste': 'intersection ARI/pARI', 'indice': intersection_ARI_pARI})
 
 df = pd.DataFrame(data)
-df.to_csv("intersection_table.csv")
+df.to_csv(f"intersection_table_{alpha}.csv")
