@@ -128,6 +128,8 @@ def process_task(i):
 
 from joblib import Parallel, delayed
 
+print('n_jobs: ', n_jobs)
+
 Parallel(n_jobs=n_jobs)(
     delayed(process_task)(i) for i in range(len(test_task1s))
 )
