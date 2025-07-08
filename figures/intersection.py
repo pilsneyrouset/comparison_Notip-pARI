@@ -43,6 +43,7 @@ for i in range(len(test_task1s)):
     intersection_ARI_pARI = first_crossing_idx(TDP_ARI, TDP_pARI)
     
     data.append({
+        'contraste' : i,
         'intersection Notip/pARI': intersection_Notip_pARI,
         'intersection ARI/pARI': intersection_ARI_pARI
     })
