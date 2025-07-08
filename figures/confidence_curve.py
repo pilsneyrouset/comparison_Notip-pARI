@@ -44,6 +44,7 @@ if len(sys.argv) > 1:
     n_jobs = int(sys.argv[1])
 else:
     n_jobs = 1
+print('n_jobs: ', n_jobs)
 
 # Fetch data
 fetch_neurovault(max_images=np.inf, mode='download_new', collection_id=1952)
@@ -55,7 +56,7 @@ memory = Memory(location, mmap_mode='r', verbose=0)
 df_tasks = pd.read_csv(os.path.join(script_path, 'contrast_list2.csv'))
 test_task1s, test_task2s = df_tasks['task1'], df_tasks['task2']
 
-for i in range(len(test_task1s)):
+def process_task(i):
     print("task number :", i)
     task1 = test_task1s[i]
     task2 = test_task2s[i]
@@ -123,3 +124,10 @@ for i in range(len(test_task1s)):
     TDP_pARI = curve_min_tdp(p_values, pari_thr)
     np.save(f"task{i}/TDP_pARI_{alpha}.npy", TDP_pARI)
     print("TDP pARI saved")
+
+
+from joblib import Parallel, delayed
+
+Parallel(n_jobs=n_jobs)(
+    delayed(process_task)(i) for i in range(len(test_task1s))
+)
