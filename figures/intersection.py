@@ -38,10 +38,14 @@ for i in range(len(test_task1s)):
     TDP_ARI = np.load(f"task{i}/TDP_ARI_{alpha}.npy")
     TDP_Notip = np.load(f"task{i}/TDP_Notip_{alpha}.npy")
     TDP_pARI = np.load(f"task{i}/TDP_pARI_{alpha}.npy")
+    
     intersection_Notip_pARI = first_crossing_idx(TDP_Notip, TDP_pARI)
     intersection_ARI_pARI = first_crossing_idx(TDP_ARI, TDP_pARI)
-    data.append({'contraste': 'intersection Notip/pARI', 'indice': intersection_Notip_pARI})
-    data.append({'contraste': 'intersection ARI/pARI', 'indice': intersection_ARI_pARI})
+    
+    data.append({
+        'intersection Notip/pARI': intersection_Notip_pARI,
+        'intersection ARI/pARI': intersection_ARI_pARI
+    })
 
 df = pd.DataFrame(data)
-df.to_csv(f"intersection_table_{alpha}.csv")
+df.to_csv(f"intersection_table_{alpha}.csv", index=False)
