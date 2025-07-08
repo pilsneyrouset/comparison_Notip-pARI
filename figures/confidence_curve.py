@@ -39,12 +39,7 @@ n_train = 10000
 smoothing_fwhm = 4
 k_max = 1000
 delta = 27
-n_jobs = 1
-if len(sys.argv) > 1:
-    n_jobs = int(sys.argv[1])
-else:
-    n_jobs = 1
-print('n_jobs: ', n_jobs)
+n_jobs = 40
 
 # Fetch data
 fetch_neurovault(max_images=np.inf, mode='download_new', collection_id=1952)
