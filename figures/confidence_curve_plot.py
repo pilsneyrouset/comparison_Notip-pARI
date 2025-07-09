@@ -33,9 +33,10 @@ from scripts.posthoc_fmri import get_processed_input, ari_inference, calibrate_s
 from sanssouci.reference_families import shifted_template, shifted_template_lambda, linear_template_kmin
 from sanssouci.post_hoc_bounds import curve_min_tdp
 
+
 # Paramètres
 seed = 42
-alpha = 0.05
+alpha = 0.1
 B = 10000
 n_train = 10000
 smoothing_fwhm = 4
@@ -45,6 +46,7 @@ n_jobs = 1
 
 def FDP(TDP):
     return 1 - TDP
+
 # Fetch data
 fetch_neurovault(max_images=np.inf, mode='download_new', collection_id=1952)
 sys.path.append(script_path)
@@ -70,20 +72,29 @@ for i in range(len(test_task1s)):
     stat_img = check_niimg_3d(z_map)
     stat_map_ = safe_get_data(stat_img)
 
-    voxels_sup_3_5 = np.where(stat_map_ > 3.5)[0]  # indices des voxels > 3.5
-    print(f"Nombre de voxels avec z > 3.5 : {len(voxels_sup_3_5)}")
+    z_thresholds = [3, 3.5, 4, 4.5]
+    voxel_counts = {}
+
+    for z in z_thresholds:
+        count = np.sum(stat_map_ > z)
+        voxel_counts[z] = count
+        print(f"Nombre de voxels avec z > {z} : {count}")
 
     TDP_ARI = np.load(f'task{i}/TDP_ARI_{alpha}.npy')
     TDP_Notip = np.load(f'task{i}/TDP_Notip_{alpha}.npy')
     TDP_pARI = np.load(f'task{i}/TDP_pARI_{alpha}.npy')
 
 
+    base_color = 'blue'
+    alphas = np.linspace(0.3, 0.9, len(voxel_counts))
+
     plt.figure()
     plt.title(rf'$\alpha = {alpha}$')
     plt.plot(TDP_ARI[:10000], label='ARI')
     plt.plot(TDP_Notip[:10000], label='Notip')
     plt.plot(TDP_pARI[:10000], label='pARI')
-    plt.axvline(x=len(voxels_sup_3_5), color='red', linestyle='--', label=f'Seuil z=3.5')
+    for (z, count), seuil in zip(sorted(voxel_counts.items()), alphas):
+        plt.axvline(x=count, color=base_color, linestyle='--', alpha=seuil, label=f'Seuil z={z}')
     plt.xscale("log")
     plt.ylabel("Borne sur le TDP")
     plt.xlabel("k")
@@ -97,7 +108,8 @@ for i in range(len(test_task1s)):
     plt.plot(FDP(TDP_ARI)[:10000], label='ARI')
     plt.plot(FDP(TDP_Notip)[:10000], label='Notip')
     plt.plot(FDP(TDP_pARI)[:10000], label='pARI')
-    plt.axvline(x=len(voxels_sup_3_5), color='red', linestyle='--', label=f'Seuil z=3.5')
+    for (z, count), seuil in zip(sorted(voxel_counts.items()), alphas):
+        plt.axvline(x=count, color=base_color, linestyle='--', alpha=seuil, label=f'Seuil z={z}')
     plt.xscale("log")
     plt.ylabel("Borne sur le FDP")
     plt.xlabel("k")
