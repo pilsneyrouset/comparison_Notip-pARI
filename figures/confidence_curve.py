@@ -39,7 +39,7 @@ n_train = 10000
 smoothing_fwhm = 4
 k_max = 1000
 delta = 27
-n_jobs = 36
+n_jobs = 1
 
 # Fetch data
 fetch_neurovault(max_images=np.inf, mode='download_new', collection_id=1952)
@@ -62,8 +62,15 @@ def process_task(i):
     z_vals = norm.isf(p_values)
     z_map = nifti_masker.inverse_transform(z_vals)
 
+
     stat_img = check_niimg_3d(z_map)
     stat_map_ = safe_get_data(stat_img)
+
+    voxels_sup_3_5 = np.where(stat_map_ > 3.5)[0]  # indices des voxels > 3.5
+    print(f"Nombre de voxels avec z > 3.5 : {len(voxels_sup_3_5)}")
+
+    # Si tu veux récupérer les valeurs de ces voxels
+    valeurs_sup_3_5 = stat_map_[voxels_sup_3_5]
 
 
 # ## Données du dataset Localizer

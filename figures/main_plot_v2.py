@@ -115,4 +115,4 @@ for label, cl in clusters.items():
             fontsize=20, fontweight='bold',
             color='black', ha='center', va=va)
 
-plt.savefig("main_plot.pdf", bbox_inches='tight')
+plt.savefig("main_plot/main_plot.pdf", bbox_inches='tight')

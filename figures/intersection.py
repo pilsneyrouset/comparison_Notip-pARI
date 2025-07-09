@@ -11,7 +11,7 @@ script_path = os.path.dirname(__file__)
 fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
 fig_path = os.path.join(fig_path_, 'figures')
 
-alpha = 0.05
+alpha = 0.1
 
 def first_crossing_idx(tdp_a, tdp_b):
     """
@@ -49,4 +49,4 @@ for i in range(len(test_task1s)):
     })
 
 df = pd.DataFrame(data)
-df.to_csv(f"intersection_table_{alpha}.csv", index=False)
+df.to_csv(f"intersections/intersection_table_{alpha}.csv", index=False)
