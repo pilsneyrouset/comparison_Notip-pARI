@@ -36,7 +36,7 @@ from sanssouci.post_hoc_bounds import curve_min_tdp
 
 # Paramètres
 seed = 42
-alpha = 0.1
+alpha = 0.05
 B = 10000
 n_train = 10000
 smoothing_fwhm = 4
@@ -116,3 +116,71 @@ for i in range(len(test_task1s)):
     plt.grid(True, which="both", linestyle="--", linewidth=0.5)
     plt.legend()
     plt.savefig(f'task{i}/confidence_curve_FDP_{alpha}.pdf')
+
+
+
+
+# ## Données du dataset Localizer
+# n_subjects = 30
+# data = fetch_localizer_contrasts(
+#     ["left vs right button press"],
+#     n_subjects,
+#     get_tmaps=True,
+#     # legacy_format=False
+# )
+
+# TDP_ARI = np.load(f'task_notebook/TDP_ARI_{alpha}.npy')
+# TDP_Notip = np.load(f'task_notebook/TDP_Notip_{alpha}.npy')
+# TDP_pARI = np.load(f'task_notebook/TDP_pARI_{alpha}.npy')
+
+# smoothing_fwhm = 8.0
+# nifti_masker = NiftiMasker(smoothing_fwhm=smoothing_fwhm)
+# fmri_input = nifti_masker.fit_transform(data["cmaps"])
+# stats_, p_values = stats.ttest_1samp(fmri_input, 0)
+# z_vals_ = norm.isf(p_values)
+# z_map = nifti_masker.inverse_transform(z_vals_)
+# stats_, p_values = stats.ttest_1samp(fmri_input, 0)
+# stat_img = check_niimg_3d(z_map)
+# stat_map_ = safe_get_data(stat_img)
+
+# z_thresholds = [3, 3.5, 4, 4.5]
+# voxel_counts = {}
+
+# for z in z_thresholds:
+#     count = np.sum(stat_map_ > z)
+#     voxel_counts[z] = count
+#     print(f"Nombre de voxels avec z > {z} : {count}")
+
+# base_color = 'blue'
+# alphas = np.linspace(0.3, 0.9, len(voxel_counts))
+
+# plt.figure()
+# plt.title(rf'$\alpha = {alpha}$')
+# plt.plot(TDP_ARI[:10000], label='ARI')
+# plt.plot(TDP_Notip[:10000], label='Notip')
+# plt.plot(TDP_pARI[:10000], label='pARI')
+# for (z, count), seuil in zip(sorted(voxel_counts.items()), alphas):
+#     plt.axvline(x=count, color=base_color, linestyle='--', alpha=seuil, label=f'Seuil z={z}')
+# plt.xscale("log")
+# plt.ylabel("Borne sur le TDP")
+# plt.xlabel("k")
+# plt.grid(True, which="both", linestyle="--", linewidth=0.5)
+# plt.legend()
+# plt.savefig(f'task_notebook/confidence_curve_TDP_{alpha}.pdf')
+
+
+# plt.figure()
+# plt.title(rf'$\alpha = {alpha}$')
+# plt.plot(FDP(TDP_ARI)[:10000], label='ARI')
+# plt.plot(FDP(TDP_Notip)[:10000], label='Notip')
+# plt.plot(FDP(TDP_pARI)[:10000], label='pARI')
+# for (z, count), seuil in zip(sorted(voxel_counts.items()), alphas):
+#     plt.axvline(x=count, color=base_color, linestyle='--', alpha=seuil, label=f'Seuil z={z}')
+# plt.xscale("log")
+# plt.ylabel("Borne sur le FDP")
+# plt.xlabel("k")
+# plt.grid(True, which="both", linestyle="--", linewidth=0.5)
+# plt.legend()
+# plt.savefig(f'task_notebook/confidence_curve_FDP_{alpha}.pdf')
+
+
