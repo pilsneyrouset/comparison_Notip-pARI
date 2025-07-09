@@ -39,7 +39,7 @@ n_train = 10000
 smoothing_fwhm = 4
 k_max = 1000
 delta = 27
-n_jobs = 1
+n_jobs = 20
 
 # Fetch data
 fetch_neurovault(max_images=np.inf, mode='download_new', collection_id=1952)
