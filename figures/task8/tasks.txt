@@ -1,0 +1,3 @@
+task1 = task007_body_vs_baseline
+task2 = task007_place_vs_baseline
+

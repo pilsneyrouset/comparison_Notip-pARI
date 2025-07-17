@@ -1,0 +1,3 @@
+task1 = task001_house_vs_baseline
+task2 = task001_word_vs_baseline
+

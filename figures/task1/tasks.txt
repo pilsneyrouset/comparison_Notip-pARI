@@ -1,0 +1,3 @@
+task1 = task004_right_hand_vs_baseline
+task2 = task004_right_foot_vs_baseline
+

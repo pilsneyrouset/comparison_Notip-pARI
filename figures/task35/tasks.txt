@@ -1,0 +1,3 @@
+task1 = task001_words_vs_baseline
+task2 = task001_face_vs_baseline
+
