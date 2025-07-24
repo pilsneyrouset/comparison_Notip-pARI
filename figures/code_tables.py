@@ -7,6 +7,7 @@ from scipy import stats
 from scipy.stats import norm
 
 import os
+from notip.posthoc_fmri import get_processed_input, calibrate_simes, get_stat_img
 
 from nilearn.datasets import fetch_neurovault
 from notip.posthoc_fmri import get_clusters_table_with_TDP
@@ -27,16 +28,19 @@ location = './cachedir'
 memory = Memory(location, mmap_mode='r', verbose=0)
 
 smoothing_fwhm = 4
+seed = 42
 
 df_tasks = pd.read_csv(os.path.join(script_path, 'contrast_list2.csv'))
 test_task1s, test_task2s = df_tasks['task1'], df_tasks['task2']
 
 z_thresholds = [3, 3.5, 4, 4.5, 5, 5.5]
+n_perm = 200
 
 for i in range(len(test_task1s)):
     print('number of task :', i)
     task1 = test_task1s[i]
     task2 = test_task2s[i]
+    print(task1, task2)
     path = 'task' + str(i) 
     fmri_input, nifti_masker = get_processed_input(
     task1, task2, smoothing_fwhm=smoothing_fwhm)
@@ -50,13 +54,11 @@ for i in range(len(test_task1s)):
         print('z :', z)
         df = get_clusters_table_with_TDP(
         z_map, 
-        fmri_input, 
-        n_permutations=1000,
+        fmri_input,
+        seed=seed,
+        n_permutations=n_perm,
         stat_threshold=z,
         methods=['ARI', 'Notip', 'pARI'])
-        output_file = os.path.join(path, f'1000_perm_z_threshold_{z}.csv')
+        output_file = os.path.join(path, f'{n_perm}_perm_z_threshold_{z}.csv')
         print(output_file)
         df.to_csv(output_file, index=False)
-
-
-
