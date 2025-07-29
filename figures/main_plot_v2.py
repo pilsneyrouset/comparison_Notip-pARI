@@ -62,7 +62,9 @@ display = plotting.plot_glass_brain(
     threshold=threshold,
     figure=fig,
     title="Main Plot",
-    colorbar=True
+    colorbar=True,
+    annotate=False,
+    cbar_tick_format='%.2f'
 )
 
 # for label, cl in clusters.items():
@@ -83,6 +85,8 @@ display = plotting.plot_glass_brain(
 
 #         ax.text(px, py, str(label), color='blue', fontsize=10,
 #                 ha='center', va='center')
+
+
 
 for label, cl in clusters.items():
     x, y, z = cl['coord']
@@ -112,7 +116,7 @@ for label, cl in clusters.items():
     va = 'bottom' if upward else 'top'
     text_y = final_py + (3 if upward else -3)
     ax.text(px, text_y, str(label),
-            fontsize=20, fontweight='bold',
+            fontsize=28, fontweight='bold',
             color='black', ha='center', va=va)
 
 plt.savefig("main_plot/main_plot.pdf", bbox_inches='tight')
