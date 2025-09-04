@@ -7,7 +7,9 @@ from nilearn import plotting
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from matplotlib.colors import ListedColormap
+from matplotlib.colors import ListedColormap, BoundaryNorm
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 import numpy as np
 import pandas as pd
 from scipy import ndimage
@@ -15,6 +17,7 @@ import sys
 import nibabel as nib
 from joblib import Memory
 from scipy import stats
+import matplotlib as cm
 import os
 from nilearn import image
 from tqdm import tqdm
@@ -181,7 +184,6 @@ def enlarge_colorbar(display, fig):
     bbox = cbar.ax.get_position()
     cbar.ax.set_position([bbox.x0 + 0.02, bbox.y0, bbox.width * 2.0, bbox.height * 1.2])
 
-
 # === FIGURE 1 : Carte principale ===
 fig = plt.figure(figsize=(18, 10))
 display = plotting.plot_glass_brain(
@@ -191,8 +193,25 @@ display = plotting.plot_glass_brain(
     figure=fig,
     colorbar=True,
     annotate=False,
-    cbar_tick_format='%.2f',
+    cbar_tick_format='%.2f'
+    )
+
+cbar_ax = display._cbar.ax  # récupère l'axe de la colorbar
+
+# Récupérer les limites actuelles de la colorbar
+ymin, ymax = cbar_ax.get_ylim()
+
+# Créer un rectangle blanc couvrant de 0 au seuil
+rect = patches.Rectangle(
+    (0, 0),          # x début (pour colorbar verticale, c’est toujours 0)
+    1,               # largeur du rectangle (couvre toute la colorbar)
+    threshold,       # hauteur = seuil
+    transform=cbar_ax.transData,
+    color='white',
+    zorder=10
 )
+cbar_ax.add_patch(rect)
+
 annotate_clusters(display, clusters, target_y)
 enlarge_colorbar(display, fig)
 plt.savefig("task36/main_plot.pdf", bbox_inches='tight')
