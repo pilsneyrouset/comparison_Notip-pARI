@@ -208,6 +208,7 @@ rect = patches.Rectangle(
     threshold,       # hauteur = seuil
     transform=cbar_ax.transData,
     color='white',
+    alpha=0.95,
     zorder=10
 )
 cbar_ax.add_patch(rect)

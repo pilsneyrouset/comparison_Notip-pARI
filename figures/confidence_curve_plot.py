@@ -34,7 +34,7 @@ from sanssouci.post_hoc_bounds import curve_min_tdp
 
 # Paramètres
 seed = 42
-alpha = 0.1
+alpha = 0.05
 B = 10000
 n_train = 10000
 smoothing_fwhm = 4
@@ -87,32 +87,32 @@ for i in range(len(test_task1s)):
 
     # --- Courbe TDP ---
     fig, ax = plt.subplots()
-    ax.set_title(rf'$\alpha = {alpha}$', fontweight='bold')
     ax.plot(TDP_ARI, label='ARI', color='red', alpha=0.5)
     ax.plot(TDP_Notip, label='Notip', color='green', alpha=0.5)
     ax.plot(TDP_pARI, label='pARI', color='blue', alpha=0.5)
     for (z, count), seuil in zip(sorted(voxel_counts.items()), alphas):
         ax.axvline(x=count, color=base_color, linestyle='--', alpha=seuil, label=f'z={z}')
     ax.set_xscale("log")
-    ax.set_ylabel("Bound on TDP", fontweight='bold')
-    ax.set_xlabel("k", fontweight='bold')
+    ax.set_ylabel("Lower bound on True Discovery Proportion (TDP)")
+    ax.set_xlabel("k")
     ax.grid(True, which="both", linestyle="--", linewidth=0.5)
     ax.legend()
     ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))  # <-- ici : 2 décimales
+    plt.tight_layout()
     plt.savefig(f'task{i}/confidence_curve_TDP_{alpha}_full.pdf')
 
     # --- Courbe FDP ---
     fig, ax = plt.subplots()
-    ax.set_title(rf'$\alpha = {alpha}$', fontweight='bold')
     ax.plot(FDP(TDP_ARI), label='ARI', color='red', alpha=0.5)
     ax.plot(FDP(TDP_Notip), label='Notip', color='green', alpha=0.5)
     ax.plot(FDP(TDP_pARI), label='pARI', color='blue', alpha=0.5)
     for (z, count), seuil in zip(sorted(voxel_counts.items()), alphas):
         ax.axvline(x=count, color=base_color, linestyle='--', alpha=seuil, label=f'z={z}')
     ax.set_xscale("log")
-    ax.set_ylabel("Bound on FDP", fontweight='bold')
-    ax.set_xlabel("k", fontweight='bold')
+    ax.set_ylabel("Upper bound on False Discovery Proportion (FDP)")
+    ax.set_xlabel("k")
     ax.grid(True, which="both", linestyle="--", linewidth=0.5)
     ax.legend()
     ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))  # <-- idem : 2 décimales
+    plt.tight_layout()
     plt.savefig(f'task{i}/confidence_curve_FDP_{alpha}_full.pdf')
