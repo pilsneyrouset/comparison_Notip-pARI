@@ -30,7 +30,7 @@ from scripts.posthoc_fmri import (
 # Parameters
 seed = 42
 alpha = 0.1
-B = 10000
+B = 10
 n_train = 10000
 smoothing_fwhm = 4
 k_max = 1000
