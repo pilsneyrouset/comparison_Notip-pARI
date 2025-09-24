@@ -1,52 +1,28 @@
-from nilearn.datasets import fetch_localizer_contrasts
 import numpy as np
-from nilearn.maskers import NiftiMasker
 from scipy import stats
 from scipy.stats import norm
 from nilearn import plotting
 import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
-from matplotlib.colors import ListedColormap
-from matplotlib.colors import ListedColormap, BoundaryNorm
-import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-import numpy as np
 import pandas as pd
 from scipy import ndimage
 import sys
 import nibabel as nib
 from joblib import Memory
-from scipy import stats
-import matplotlib as cm
 import os
 from nilearn import image
-from tqdm import tqdm
-import sanssouci as sa
-import warnings
 from nilearn.datasets import fetch_neurovault
-from nilearn.maskers import NiftiMasker
-from nilearn._utils import check_niimg_3d
-from nilearn._utils.niimg import safe_get_data
-from scipy.stats import norm
-from nilearn.datasets import fetch_localizer_contrasts
 
-import sys
+# Paths setup
 script_path = os.path.dirname(__file__)
 fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
 fig_path = os.path.join(fig_path_, 'figures')
 os.makedirs(fig_path, exist_ok=True)
 sys.path.append(os.path.abspath(os.path.join(script_path, '..')))
-script_path = os.path.dirname(__file__)
-fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
-fig_path = os.path.join(fig_path_, 'figures')
 
-from scripts.posthoc_fmri import compute_bounds, get_data_driven_template_two_tasks
-from sanssouci.lambda_calibration import calibrate_jer, calibrate_jer_param
-from scripts.posthoc_fmri import get_processed_input, ari_inference, calibrate_simes, calibrate_shifted_simes, calibrate_truncated_simes, _compute_hommel_value
-from sanssouci.reference_families import shifted_linear_template, linear_template_kmin
-from sanssouci.post_hoc_bounds import curve_min_tdp
+from scripts.posthoc_fmri import get_processed_input
 
-# Paramètres
+# Parameters
 seed = 42
 alpha = 0.1
 B = 10000
@@ -56,26 +32,30 @@ k_max = 1000
 delta = 27
 n_jobs = 20
 
-# Fetch data
+# Fetch NeuroVault dataset
 fetch_neurovault(max_images=np.inf, mode='download_new', collection_id=1952)
 sys.path.append(script_path)
 location = './cachedir'
 memory = Memory(location, mmap_mode='r', verbose=0)
 
-# Données du dataset
+# Load task contrasts from dataset
 df_tasks = pd.read_csv(os.path.join(script_path, 'contrast_list2.csv'))
 test_task1s, test_task2s = df_tasks['task1'], df_tasks['task2']
 i = 36
 
 task1 = test_task1s[i]
 task2 = test_task2s[i]
-print(task1, task2)
+print("task1: ",task1)
+print("task2:", task2)
+
+# Preprocess fMRI input
 fmri_input, nifti_masker = get_processed_input(
-task1, task2, smoothing_fwhm=smoothing_fwhm)
+    task1, task2, smoothing_fwhm=smoothing_fwhm)
+
+# One-sample t-test
 stats_, p_values = stats.ttest_1samp(fmri_input, 0)
 z_vals = norm.isf(p_values)
 z_map = nifti_masker.inverse_transform(z_vals)
-
 
 
 # === Clusters ===
@@ -99,25 +79,25 @@ clusters = {
 }
 
 threshold = 3.5
-target_y = {1: 120, 2: 85, 3: -130, 4: 85, 5: 110, 6: -110, 7: 95, 8: 85, 9: 110, 10: -90, 11: -125, 12:110, 13:90, 14: -110, 15: 120, 16:-110}
+target_y = {1: 120, 2: 85, 3: -130, 4: 85, 5: 110, 6: -110, 7: 95, 8: 85, 
+            9: 110, 10: -90, 11: -125, 12:110, 13:90, 14: -110, 15: 120, 16:-110}
 
-# Charger les données de ton z_map
+# Load z-map data
 z_data = z_map.get_fdata()
 
-# 1. Binariser la carte avec ton seuil
+# 1. Binarize the map with threshold
 binary_data = (z_data > threshold).astype(int)
 
-# 2. Labelliser tous les clusters
+# 2. Label all clusters
 labeled_data, n_labels = ndimage.label(binary_data)
 
-# 3. On crée une liste des clusters à garder (correspondant à ton dictionnaire)
-# On localise le label de chaque cluster en cherchant le voxel proche de sa coordonnée
+# 3. Keep only clusters defined in the dictionary
 mask_data = np.zeros_like(binary_data)
 affine_inv = np.linalg.inv(z_map.affine)
 
 for idx, cl in clusters.items():
     x, y, z = cl['coord']
-    # Transformer coord MNI -> index voxel
+    # Transform MNI coordinates -> voxel indices
     i, j, k = nib.affines.apply_affine(affine_inv, [x, y, z])
     i, j, k = int(round(i)), int(round(j)), int(round(k))
     
@@ -128,12 +108,12 @@ for idx, cl in clusters.items():
         if label_val > 0:
             mask_data[labeled_data == label_val] = 1
 
-# 4. Créer une image masque et appliquer à la carte Z
+# 4. Apply mask to z-map
 mask_img = nib.Nifti1Image(mask_data.astype(np.int16), z_map.affine)
 masked_z_map = image.math_img("img * mask", img=z_map, mask=mask_img)
 
 
-# Fonction pour ajouter les labels des clusters
+# Add cluster labels to plots
 def annotate_clusters(display, clusters, target_y):
     transparent_labels = [11, 12, 13, 15]
     for label, cl in clusters.items():
@@ -164,7 +144,7 @@ def annotate_clusters(display, clusters, target_y):
         va = 'bottom' if upward else 'top'
         text_y = final_py + (5 if upward else -5)
 
-        # Définir alpha en fonction du label
+        # Use transparency for some cluster labels
         alpha_val = 0.3 if label in transparent_labels else 1.0
 
         ax.text(px, text_y, str(label),
@@ -173,7 +153,7 @@ def annotate_clusters(display, clusters, target_y):
                 alpha=alpha_val)
 
 
-# Fonction pour agrandir la colorbar
+# Enlarge the colorbar
 def enlarge_colorbar(display, fig):
     if hasattr(display, '_cbar') and display._cbar is not None:
         cbar = display._cbar
@@ -184,7 +164,7 @@ def enlarge_colorbar(display, fig):
     bbox = cbar.ax.get_position()
     cbar.ax.set_position([bbox.x0 + 0.02, bbox.y0, bbox.width * 2.0, bbox.height * 1.2])
 
-# === FIGURE 1 : Carte principale ===
+# === Main glass brain plot ===
 fig = plt.figure(figsize=(18, 10))
 display = plotting.plot_glass_brain(
     masked_z_map,
@@ -194,18 +174,15 @@ display = plotting.plot_glass_brain(
     colorbar=True,
     annotate=False,
     cbar_tick_format='%.2f'
-    )
+)
 
-cbar_ax = display._cbar.ax  # récupère l'axe de la colorbar
+cbar_ax = display._cbar.ax  # get colorbar axis
 
-# Récupérer les limites actuelles de la colorbar
-ymin, ymax = cbar_ax.get_ylim()
-
-# Créer un rectangle blanc couvrant de 0 au seuil
+# Cover values below threshold with a white rectangle
 rect = patches.Rectangle(
-    (0, 0),          # x début (pour colorbar verticale, c’est toujours 0)
-    1,               # largeur du rectangle (couvre toute la colorbar)
-    threshold,       # hauteur = seuil
+    (0, 0),
+    1,
+    threshold,
     transform=cbar_ax.transData,
     color='white',
     alpha=0.95,
