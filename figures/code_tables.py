@@ -6,8 +6,10 @@ from joblib import Memory
 from scipy import stats
 from scipy.stats import norm
 import os
-from notip.posthoc_fmri import get_processed_input, get_clusters_table_with_TDP
+from notip.posthoc_fmri import get_clusters_table_with_TDP
+from scripts.posthoc_fmri import get_processed_input
 from nilearn.datasets import fetch_neurovault
+from tqdm import tqdm
 
 # Paths setup
 script_path = os.path.dirname(__file__)
@@ -33,12 +35,12 @@ n_perm = 1000
 df_tasks = pd.read_csv(os.path.join(script_path, 'contrast_list2.csv'))
 test_task1s, test_task2s = df_tasks['task1'], df_tasks['task2']
 
-# Loop over tasks
-for i in range(36, len(test_task1s)):
-    print('Task number:', i)
+# Loop over tasksfrom tqdm import tqdm  # make sure to import tqdm
+
+# Loop over tasks with progress bar
+for i in tqdm(range(len(test_task1s)), desc="Processing tasks"):
     task1 = test_task1s[i]
     task2 = test_task2s[i]
-    print(task1, task2)
 
     path = f'task{i}'
     os.makedirs(path, exist_ok=True)
@@ -51,9 +53,8 @@ for i in range(36, len(test_task1s)):
     z_vals = norm.isf(p_values)
     z_map = nifti_masker.inverse_transform(z_vals)
 
-    print('Start of computations')
-    for z in z_thresholds:
-        print('z:', z)
+    # Loop over z-thresholds with progress bar
+    for z in tqdm(z_thresholds, desc=f"Task {i} z-thresholds", leave=False):
         df = get_clusters_table_with_TDP(
             z_map,
             fmri_input,
@@ -63,5 +64,4 @@ for i in range(36, len(test_task1s)):
             methods=['ARI', 'Notip', 'pARI']
         )
         output_file = os.path.join(path, f'{n_perm}_perm_z_threshold_{z}.csv')
-        print(output_file)
         df.to_csv(output_file, index=False)
