@@ -664,7 +664,7 @@ def get_clusters_table_TDP(stat_img, stat_threshold, fmri_input,
         rather than any peaks/subpeaks.
     """
     cols = ['Cluster ID', 'X', 'Y', 'Z', 'Peak Stat', 'Cluster Size (mm3)',
-            'TDP (ARI)', 'TDP (Calibrated Simes)', 'TDP (Learned)', 'TDP (pARI)']
+            'TDP (ARI)', 'TDP (Calibrated Simes)', 'TDP (Notip)', 'TDP (pARI)']
     # Replace None with 0
     cluster_threshold = 0 if cluster_threshold is None else cluster_threshold
     # print(cluster_threshold)
@@ -678,7 +678,7 @@ def get_clusters_table_TDP(stat_img, stat_threshold, fmri_input,
     ari_thr = sa.linear_template(alpha, hommel, hommel)
     pval0, simes_thr = calibrate_simes(fmri_input, alpha,
                                        k_max=k_max, B=B, seed=seed)
-    learned_thr = sa.calibrate_jer(alpha, learned_templates, pval0, k_max)
+    notip_thr = sa.calibrate_jer(alpha, learned_templates, pval0, k_max)
     pval0, pari_thr = calibrate_shifted_simes(fmri_input, alpha, B=B, seed=seed, k_min=delta)
 
     # Apply threshold(s) to image
@@ -738,7 +738,7 @@ def get_clusters_table_TDP(stat_img, stat_threshold, fmri_input,
             cluster_p_values = norm.sf(masked_data_)
             ari_tdp = sa.min_tdp(cluster_p_values, ari_thr)
             simes_tdp = sa.min_tdp(cluster_p_values, simes_thr)
-            learned_tdp = sa.min_tdp(cluster_p_values, learned_thr)
+            notip_tdp = sa.min_tdp(cluster_p_values, notip_thr)
             pari_tdp = sa.min_tdp(cluster_p_values, pari_thr)
             cluster_size_mm = int(np.sum(cluster_mask) * voxel_size)
 
@@ -772,7 +772,7 @@ def get_clusters_table_TDP(stat_img, stat_threshold, fmri_input,
                         cluster_size_mm,
                         "{0:.2f}".format(ari_tdp),
                         "{0:.2f}".format(simes_tdp),
-                        "{0:.2f}".format(learned_tdp),
+                        "{0:.2f}".format(notip_tdp),
                         "{0:.2f}".format(pari_tdp),
                     ]
                 else:
