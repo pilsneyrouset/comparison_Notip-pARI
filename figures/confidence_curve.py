@@ -5,6 +5,8 @@ import sys
 from joblib import Memory, Parallel, delayed
 from scipy import stats
 import os
+from tqdm import tqdm
+from tqdm_joblib import tqdm_joblib
 from nilearn.datasets import fetch_neurovault
 from nilearn._utils import check_niimg_3d
 from nilearn._utils.niimg import safe_get_data
@@ -96,7 +98,8 @@ def process_task(i):
 
 print('n_jobs:', n_jobs)
 
-# Parallel execution for all tasks
-Parallel(n_jobs=n_jobs)(
-    delayed(process_task)(i) for i in range(len(test_task1s))
-)
+# Wrap the Parallel execution with tqdm_joblib to show a progress bar
+with tqdm_joblib(tqdm(desc="Processing tasks", total=len(test_task1s))):
+    Parallel(n_jobs=n_jobs)(
+        delayed(process_task)(i) for i in range(len(test_task1s))
+    )
