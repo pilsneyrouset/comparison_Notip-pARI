@@ -27,7 +27,7 @@ fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952)
 sys.path.append(script_path)
 
 from posthoc_fmri import get_processed_input, calibrate_shifted_simes
-from sanssouci.reference_families import shifted_template
+from sanssouci.reference_families import shifted_linear_template
 from sanssouci.lambda_calibration import calibrate_jer
 
 location = './cachedir'
@@ -48,7 +48,7 @@ pval0, calibrated_shifted_simes_thr = calibrate_shifted_simes(fmri_input, alpha,
 
 # Calibration avec les seuils prédéfinis
 nb_templates = 1000
-templates = np.array([lambd * shifted_template(p, p, k_min=k_min) for lambd in np.linspace(0, 1, nb_templates)])
+templates = np.array([shifted_linear_template(p, p, k_min=k_min, lbd=lambd) for lambd in np.linspace(0, 1, nb_templates)])
 calibrated_template_jer = calibrate_jer(alpha, templates, pval0,
                                         k_max=p)
 

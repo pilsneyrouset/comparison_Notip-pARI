@@ -22,7 +22,7 @@ sys.path.append(script_path)
 from posthoc_fmri import compute_bounds, get_data_driven_template_two_tasks
 from sanssouci.lambda_calibration import calibrate_jer, calibrate_jer_param
 from posthoc_fmri import get_processed_input, ari_inference, calibrate_simes, calibrate_shifted_simes, calibrate_truncated_simes
-from sanssouci.reference_families import shifted_template, shifted_template_lambda, linear_template_kmin
+from sanssouci.reference_families import shifted_linear_template, linear_template_kmin
 
 location = './cachedir'
 memory = Memory(location, mmap_mode='r', verbose=0)
@@ -216,7 +216,7 @@ p = fmri_input.shape[1]
 pval0, calibrated_shifted_simes_tpl = calibrate_shifted_simes(fmri_input, alpha, B=B, n_jobs=n_jobs, seed=seed, k_min=k_min)
 _, region_calibrated_shifted_simes_tpl = sa.find_largest_region(p_values, calibrated_shifted_simes_tpl, TDP, nifti_masker)
 
-dicho_shifted_simes_tpl = calibrate_jer_param(alpha, generate_template=shifted_template_lambda, pval0=pval0, k_max=p, m=p, k_min=k_min, epsilon=0.0001)
+dicho_shifted_simes_tpl = calibrate_jer_param(alpha, generate_template=shifted_linear_template, pval0=pval0, k_max=p, m=p, k_min=k_min, epsilon=0.0001)
 _, region_dicho_shifted_simes_tpl = sa.find_largest_region(p_values, dicho_shifted_simes_tpl, TDP, nifti_masker)
 
 plt.figure(figsize=(15, 8))

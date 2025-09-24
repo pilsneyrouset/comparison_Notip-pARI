@@ -28,7 +28,7 @@ fig_path = os.path.join(fig_path_, 'figures')
 from scripts.posthoc_fmri import compute_bounds, get_data_driven_template_two_tasks
 from sanssouci.lambda_calibration import calibrate_jer, calibrate_jer_param
 from scripts.posthoc_fmri import get_processed_input, ari_inference, calibrate_simes, calibrate_shifted_simes, calibrate_truncated_simes, _compute_hommel_value
-from sanssouci.reference_families import shifted_template, shifted_template_lambda, linear_template_kmin
+from sanssouci.reference_families import , shifted_linear_template, linear_template_kmin
 from sanssouci.post_hoc_bounds import curve_min_tdp
 
 # Paramètres
@@ -51,7 +51,7 @@ memory = Memory(location, mmap_mode='r', verbose=0)
 df_tasks = pd.read_csv(os.path.join(script_path, 'contrast_list2.csv'))
 test_task1s, test_task2s = df_tasks['task1'], df_tasks['task2']
 
-def process_task(i):
+for i in range(35, len(test_task1s)):
     print("task number :", i)
     task1 = test_task1s[i]
     task2 = test_task2s[i]
@@ -90,46 +90,46 @@ def process_task(i):
     # z_map = nifti_masker.inverse_transform(z_vals_)
     # stats_, p_values = stats.ttest_1samp(fmri_input, 0)
 
-    stat_img = check_niimg_3d(z_map)
-    stat_map_ = safe_get_data(stat_img)
-    p = fmri_input.shape[1]
-    stat_map_nonzero = stat_map_[stat_map_ != 0]
-    hommel = _compute_hommel_value(stat_map_nonzero, alpha)
+#     stat_img = check_niimg_3d(z_map)
+#     stat_map_ = safe_get_data(stat_img)
+#     p = fmri_input.shape[1]
+#     stat_map_nonzero = stat_map_[stat_map_ != 0]
+#     hommel = _compute_hommel_value(stat_map_nonzero, alpha)
 
-    # Calcul du TDP pour ARI
-    ari_thr = sa.linear_template(alpha, hommel, hommel)
-    TDP_ARI = curve_min_tdp(p_values, ari_thr)
-    np.save(f"task{i}/TDP_ARI_{alpha}.npy", TDP_ARI)
-    print(f"TDP ARI saved{i}")
+#     # Calcul du TDP pour ARI
+#     ari_thr = sa.linear_template(alpha, hommel, hommel)
+#     TDP_ARI = curve_min_tdp(p_values, ari_thr)
+#     np.save(f"task{i}/TDP_ARI_{alpha}.npy", TDP_ARI)
+#     print(f"TDP ARI saved{i}")
 
-    print(f"Calcul de pval0{i}")
-    pval0, _ = calibrate_simes(fmri_input, alpha, k_max=k_max, B=B, seed=seed)
+#     print(f"Calcul de pval0{i}")
+#     pval0, _ = calibrate_simes(fmri_input, alpha, k_max=k_max, B=B, seed=seed)
 
-    # Entraînement de Notip sur le dataset d'inférence
-    training_seed = 23
-    train_task1 = test_task1s[i]
-    train_task2 = test_task2s[i]
-    print(f"Start Notip training{i}")
-    learned_templates = get_data_driven_template_two_tasks(
-                        train_task1, train_task2, B=n_train, seed=training_seed)
-    print(f"End of Notip training{i}")
-    # Calcul du TDP pour Notip
-    calibrated_tpl = calibrate_jer(alpha, learned_templates, pval0, k_max)
-    TDP_notip = curve_min_tdp(p_values, calibrated_tpl)
-    np.save(f"task{i}/TDP_Notip_{alpha}.npy", TDP_notip)
-    print(f"TDP Notip saved{i}")
+#     # Entraînement de Notip sur le dataset d'inférence
+#     training_seed = 23
+#     train_task1 = test_task1s[i]
+#     train_task2 = test_task2s[i]
+#     print(f"Start Notip training{i}")
+#     learned_templates = get_data_driven_template_two_tasks(
+#                         train_task1, train_task2, B=n_train, seed=training_seed)
+#     print(f"End of Notip training{i}")
+#     # Calcul du TDP pour Notip
+#     calibrated_tpl = calibrate_jer(alpha, learned_templates, pval0, k_max)
+#     TDP_notip = curve_min_tdp(p_values, calibrated_tpl)
+#     np.save(f"task{i}/TDP_Notip_{alpha}.npy", TDP_notip)
+#     print(f"TDP Notip saved{i}")
 
-    # Calcul du TDP pour pARI
-    pval0, pari_thr = calibrate_shifted_simes(fmri_input, alpha, B=B, seed=seed, k_min=delta)
-    TDP_pARI = curve_min_tdp(p_values, pari_thr)
-    np.save(f"task{i}/TDP_pARI_{alpha}.npy", TDP_pARI)
-    print(f"TDP pARI saved{i}")
+#     # Calcul du TDP pour pARI
+#     pval0, pari_thr = calibrate_shifted_simes(fmri_input, alpha, B=B, seed=seed, k_min=delta)
+#     TDP_pARI = curve_min_tdp(p_values, pari_thr)
+#     np.save(f"task{i}/TDP_pARI_{alpha}.npy", TDP_pARI)
+#     print(f"TDP pARI saved{i}")
 
 
-from joblib import Parallel, delayed
+# from joblib import Parallel, delayed
 
-print('n_jobs: ', n_jobs)
+# print('n_jobs: ', n_jobs)
 
-Parallel(n_jobs=n_jobs)(
-    delayed(process_task)(i) for i in range(len(test_task1s))
-)
+# Parallel(n_jobs=n_jobs)(
+#     delayed(process_task)(i) for i in range(len(test_task1s))
+# )

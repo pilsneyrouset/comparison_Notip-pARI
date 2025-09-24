@@ -29,7 +29,7 @@ from nilearn._utils.niimg import safe_get_data
 
 from nilearn.reporting.get_clusters_table import _local_max
 from sanssouci.lambda_calibration import get_pivotal_stats, get_pivotal_stats_shifted
-from sanssouci.reference_families import inverse_shifted_template, shifted_template
+from sanssouci.reference_families import inverse_shifted_linear_template, shifted_linear_template
 from sanssouci.reference_families import inverse_linear_template_kmin, linear_template_kmin
 from sanssouci.lambda_calibration import calibrate_jer
 
@@ -247,7 +247,7 @@ def calibrate_shifted_simes(fmri_input, alpha, B=100, n_jobs=1, seed=None, k_min
     piv_stat = get_pivotal_stats_shifted(pval0, k_min=k_min)
     lambda_quant = np.quantile(piv_stat, alpha)
     # Compute chosen template
-    shifted_simes_thr = lambda_quant * shifted_template(p, p, k_min=k_min)
+    shifted_simes_thr = shifted_linear_template(p, p, k_min=k_min, lbd=lambda_quant)
 
     return pval0, shifted_simes_thr
 

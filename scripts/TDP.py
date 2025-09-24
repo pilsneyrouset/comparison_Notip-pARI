@@ -22,7 +22,7 @@ sys.path.append(script_path)
 from posthoc_fmri import compute_bounds, get_data_driven_template_two_tasks
 from sanssouci.lambda_calibration import calibrate_jer, calibrate_jer_param
 from posthoc_fmri import get_processed_input, ari_inference, calibrate_simes, calibrate_shifted_simes, calibrate_truncated_simes
-from sanssouci.reference_families import shifted_template, shifted_template_lambda, linear_template_kmin
+from sanssouci.reference_families import shifted_linear_template, linear_template_kmin
 from sanssouci.post_hoc_bounds import curve_min_tdp
 
 seed = 42

@@ -21,7 +21,7 @@ sys.path.append(script_path)
 from posthoc_fmri import get_processed_input, calibrate_shifted_simes
 from posthoc_fmri import ari_inference, get_data_driven_template_two_tasks
 from sanssouci.lambda_calibration import calibrate_jer
-from sanssouci.reference_families import shifted_template
+from sanssouci.reference_families import shifted_linear_template
 
 fetch_neurovault(max_images=np.infty, mode='download_new', collection_id=1952)
 
@@ -66,7 +66,7 @@ alphas = [0.05, 0.1, 0.2]
 def compute_regions(
         k_max, pvals_perm, p_values, alpha, TDP, nifti_masker, task_idx, k_min):
 
-    shifted_templates = np.array([lambd*shifted_template(p, p, k_min=k_min) for lambd in np.linspace(0, 1, n_train)])
+    shifted_templates = np.array([shifted_linear_template(p, p, k_min=k_min, lbd=lambd) for lambd in np.linspace(0, 1, n_train)])
     calibrated_shifted_simes_tpl = calibrate_jer(alpha, shifted_templates,
                                                  pvals_perm_tot[task_idx], k_max=p, # est-ce que c'est le bon p ?
                                                  k_min=k_min)
@@ -121,7 +121,7 @@ for j in range(len(TDPs)):
 #             for kmin in k_mins:
 #                 piv_stat = get_pivotal_stats_shifted(pval0, k_min=kmin)
 #                 lambda_quant = np.quantile(piv_stat, alpha)
-#                 calibrated_shifted_tpl = lambda_quant * shifted_template(p, p, k_min=kmin)
+#                 calibrated_shifted_tpl = shifted_linear_template(p, p, k_min=kmin, lbd=lambda_quant)
                 
 #                 learned_templates_kmin = learned_templates.copy()
 #                 learned_templates_kmin[:, :kmin] = np.zeros((n_train, kmin))
