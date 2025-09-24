@@ -35,8 +35,6 @@ n_perm = 1000
 df_tasks = pd.read_csv(os.path.join(script_path, 'contrast_list2.csv'))
 test_task1s, test_task2s = df_tasks['task1'], df_tasks['task2']
 
-# Loop over tasksfrom tqdm import tqdm  # make sure to import tqdm
-
 # Loop over tasks with progress bar
 for i in tqdm(range(len(test_task1s)), desc="Processing tasks"):
     task1 = test_task1s[i]
