@@ -1,0 +1,3 @@
+task1 = task001_auditory_right_motor_vs_baseline
+task2 = task001_visual_right_motor_vs_baseline
+

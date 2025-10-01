@@ -1,0 +1,3 @@
+task1 = task001_equation_vs_baseline
+task2 = task001_number_vs_baseline
+
