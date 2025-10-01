@@ -1,3 +1,0 @@
-task1 = task007_tool_vs_baseline
-task2 = task007_face_vs_baseline
-
