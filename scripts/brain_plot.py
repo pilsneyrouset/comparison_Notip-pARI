@@ -12,6 +12,7 @@ from joblib import Memory
 import os
 from nilearn import image
 from nilearn.datasets import fetch_neurovault
+from tools.posthoc_fmri import get_processed_input
 
 # Paths setup
 script_path = os.path.dirname(__file__)
@@ -19,8 +20,6 @@ fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
 fig_path = os.path.join(fig_path_, 'figures')
 os.makedirs(fig_path, exist_ok=True)
 sys.path.append(os.path.abspath(os.path.join(script_path, '..')))
-
-from notip.posthoc_fmri import get_processed_input
 
 # Parameters
 seed = 42

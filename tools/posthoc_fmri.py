@@ -3,14 +3,16 @@ and utilitary functions to use SansSouci on fMRI data (author = A.Blain)
 
 """
 import warnings
-
 import numpy as np
 from scipy.stats import norm
-
 from nilearn.input_data import NiftiMasker
 from nilearn.glm import fdr_threshold
-from nilearn.image import get_data, math_img, new_img_like
-
+from nilearn.image import new_img_like
+from nilearn.image import threshold_img
+from nilearn.image.resampling import coord_transform
+from nilearn._utils import check_niimg_3d
+from nilearn._utils.niimg import safe_get_data
+from nilearn.reporting.get_clusters_table import _local_max
 from nilearn.datasets import get_data_dirs
 from scipy import stats
 import sanssouci as sa
@@ -18,21 +20,13 @@ import os
 import json
 import pandas as pd
 from tqdm import tqdm
-
 from string import ascii_lowercase
 from scipy import ndimage
+from sanssouci.lambda_calibration import get_pivotal_stats_shifted
+from sanssouci.reference_families import shifted_linear_template
+
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from nilearn.image import threshold_img
-from nilearn.image.resampling import coord_transform
-from nilearn._utils import check_niimg_3d
-from nilearn._utils.niimg import safe_get_data
-from nilearn.reporting.get_clusters_table import _local_max
-from sanssouci.lambda_calibration import get_pivotal_stats, get_pivotal_stats_shifted
-from sanssouci.reference_families import inverse_shifted_linear_template, shifted_linear_template
-from sanssouci.reference_families import inverse_linear_template_kmin, linear_template_kmin
-from sanssouci.lambda_calibration import calibrate_jer
 
 
 def get_data_driven_template_two_tasks(

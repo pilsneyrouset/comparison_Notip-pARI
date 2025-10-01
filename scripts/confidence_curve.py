@@ -21,7 +21,7 @@ fig_path = os.path.join(fig_path_, 'figures')
 os.makedirs(fig_path, exist_ok=True)
 sys.path.append(os.path.abspath(os.path.join(script_path, '..')))
 
-from notip.posthoc_fmri import (
+from tools.posthoc_fmri import (
     get_data_driven_template_two_tasks,
     get_processed_input,
     _compute_hommel_value,

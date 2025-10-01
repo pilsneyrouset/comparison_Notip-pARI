@@ -17,7 +17,7 @@ fig_path = os.path.join(fig_path_, 'figures')
 os.makedirs(fig_path, exist_ok=True)
 sys.path.append(os.path.abspath(os.path.join(script_path, '..')))
 
-from notip.posthoc_fmri import get_processed_input
+from tools.posthoc_fmri import get_processed_input
 
 # Parameters
 seed = 42
