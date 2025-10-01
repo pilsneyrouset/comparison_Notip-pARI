@@ -29,6 +29,10 @@ from nilearn.image.resampling import coord_transform
 from nilearn._utils import check_niimg_3d
 from nilearn._utils.niimg import safe_get_data
 from nilearn.reporting.get_clusters_table import _local_max
+from sanssouci.lambda_calibration import get_pivotal_stats, get_pivotal_stats_shifted
+from sanssouci.reference_families import inverse_shifted_linear_template, shifted_linear_template
+from sanssouci.reference_families import inverse_linear_template_kmin, linear_template_kmin
+from sanssouci.lambda_calibration import calibrate_jer
 
 
 def get_data_driven_template_two_tasks(
@@ -79,82 +83,54 @@ def get_data_driven_template_two_tasks(
 def get_processed_input(task1, task2, smoothing_fwhm=4, collection=1952):
     """
     Get (task1 - task2) processed input for a pair of Neurovault contrasts
-
-    Parameters
-    ----------
-
-    task1 : str
-        Neurovault contrast
-    task2 : str
-        Neurovault contrast
-    smoothing_fwhm : float
-        smoothing parameter for fMRI data (in mm)
-    collection : int
-        Neurovault collection ID
-
-    Returns
-    -------
-
-    fmri_input : matrix of shape (n_subjects, p)
-        Masked fMRI data
-    nifti_masker :
-        NiftiMasker object
     """
-    # First, let's find the data and collect all the image paths
+
+    # Localisation des données téléchargées
     data_path = get_data_dirs()[0]
-    data_location_ = os.path.join(data_path, 'neurovault/collection_')
-    data_location = data_location_ + str(collection)
-    paths = [data_location + '/' + path for path in os.listdir(data_location)]
+    data_location = os.path.join(data_path, f'neurovault/collection_{collection}')
+
+    # Liste des fichiers JSON de métadonnées
+    json_files = [
+        os.path.join(data_location, f) for f in os.listdir(data_location)
+        if f.endswith(".json") and 'collection_metadata' not in f
+    ]
 
     files_id = []
 
-    for path in paths:
-        if path.endswith(".json") and 'collection_metadata' not in path:
-            f = open(path)
+    for json_path in json_files:
+        with open(json_path) as f:
             data = json.load(f)
             if 'relative_path' in data:
-                files_id.append((data['relative_path'], data['file']))
-            else:
-                continue
-    # Let's retain the images for the two tasks of interest
-    # We also retain the subject name for each image file
+                relative_path = data['relative_path']
+                full_img_path = os.path.join(data_location, relative_path)
+                files_id.append((full_img_path, data['file']))
 
     subjects1, subjects2 = [], []
+    images_task1, images_task2 = [], []
 
-    images_task1 = []
-    for i in range(len(files_id)):
-        if task1 in files_id[i][1]:
-            img_path = files_id[i][0].split(sep=os.sep)[1]
-            images_task1.append(os.path.join(data_location, img_path))
-            filename = files_id[i][1].split(sep='/')[6]
-            subjects1.append(filename.split(sep='base')[1])
+    for full_path, filename in files_id:
+        if task1 in filename:
+            images_task1.append(full_path)
+            subjects1.append(filename.split("base")[-1])
+        elif task2 in filename:
+            images_task2.append(full_path)
+            subjects2.append(filename.split("base")[-1])
 
     images_task1 = np.array(images_task1)
-
-    images_task2 = []
-    for i in range(len(files_id)):
-        if task2 in files_id[i][1]:
-            img_path = files_id[i][0].split(sep=os.sep)[1]
-            images_task2.append(os.path.join(data_location, img_path))
-            filename = files_id[i][1].split(sep='/')[6]
-            subjects2.append(filename.split(sep='base')[1])
-
     images_task2 = np.array(images_task2)
 
-    # Find subjects that appear in both tasks and retain corresponding indices
+    # Identifier les sujets communs
+    common_subjects = sorted(set(subjects1) & set(subjects2))
+    indices1 = [subjects1.index(s) for s in common_subjects]
+    indices2 = [subjects2.index(s) for s in common_subjects]
 
-    common = sorted(list(set(subjects1) & set(subjects2)))
-    indices1 = [subjects1.index(common[i]) for i in range(len(common))]
-    indices2 = [subjects2.index(common[i]) for i in range(len(common))]
-
-    # Mask and compute the difference between the two conditions
-
+    # Appliquer le masque et le lissage
     nifti_masker = NiftiMasker(smoothing_fwhm=smoothing_fwhm)
     all_imgs = np.concatenate([images_task1[indices1], images_task2[indices2]])
     nifti_masker.fit(all_imgs)
+
     fmri_input1 = nifti_masker.transform(images_task1[indices1])
     fmri_input2 = nifti_masker.transform(images_task2[indices2])
-
     fmri_input = fmri_input1 - fmri_input2
 
     return fmri_input, nifti_masker
