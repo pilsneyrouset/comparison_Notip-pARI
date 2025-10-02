@@ -6,7 +6,7 @@ from joblib import Memory
 from scipy import stats
 from scipy.stats import norm
 import os
-from tools.posthoc_fmri import get_clusters_table_with_TDP, get_processed_input
+from utils import get_clusters_table_with_TDP, get_processed_input
 from nilearn.datasets import fetch_neurovault
 from tqdm import tqdm
 

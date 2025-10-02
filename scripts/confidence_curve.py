@@ -13,6 +13,12 @@ from nilearn._utils.niimg import safe_get_data
 from scipy.stats import norm
 import sanssouci as sa
 from sanssouci.post_hoc_bounds import curve_min_tdp
+from utils import (
+    get_data_driven_template_two_tasks,
+    get_processed_input,
+    _compute_hommel_value,
+    calibrate_shifted_simes,
+)
 
 # Paths setup
 script_path = os.path.dirname(__file__)
@@ -20,13 +26,6 @@ fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
 fig_path = os.path.join(fig_path_, 'figures')
 os.makedirs(fig_path, exist_ok=True)
 sys.path.append(os.path.abspath(os.path.join(script_path, '..')))
-
-from tools.posthoc_fmri import (
-    get_data_driven_template_two_tasks,
-    get_processed_input,
-    _compute_hommel_value,
-    calibrate_shifted_simes,
-)
 
 # Parameters
 seed = 42
