@@ -29,8 +29,6 @@ k_max = 1000
 delta = 27
 n_jobs = 1
 
-def FDP(TDP):
-    return 1 - TDP
 
 # Download NeuroVault dataset
 fetch_neurovault(max_images=np.inf, mode='download_new', collection_id=1952)
@@ -98,29 +96,3 @@ for i in range(len(test_task1s)):
 
     plt.tight_layout()
     plt.savefig(f'task{i}/confidence_curve_TDP_{alpha}_full.pdf')
-
-    # --- Plot FDP Curve ---
-    fig, ax = plt.subplots()
-    ax.plot(FDP(TDP_ARI), label='ARI', color='red', alpha=0.5)
-    ax.plot(FDP(TDP_Notip), label='Notip', color='green', alpha=0.5)
-    ax.plot(FDP(TDP_pARI), label='pARI', color='blue', alpha=0.5)
-    for (z, count), thresh in zip(sorted(voxel_counts.items()), np.linspace(0.3, 0.9, len(voxel_counts))):
-        ax.axvline(x=count, color='purple', linestyle='--', alpha=thresh, label=f'z={z}')
-    ax.set_xscale("log")
-    ax.set_ylabel("FDP upper bound")
-    ax.set_xlabel("k")
-    ax.grid(True, which="both", linestyle="--", linewidth=0.5)
-    ax.legend()
-    ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
-
-    # Secondary x-axis showing z-values
-    secax = ax.secondary_xaxis("top")
-    secax.set_xticks(k_ticks)
-    secax.set_xticks([], minor=True)
-    secax.set_xticklabels(z_labels)
-    secax.set_xlabel("z-value")
-    secax.tick_params(top=True, bottom=False, labeltop=True, labelbottom=False, length=5, which='both')
-    secax.set_xlim(ax.get_xlim())
-
-    plt.tight_layout()
-    plt.savefig(f'task{i}/confidence_curve_FDP_{alpha}_full.pdf')
