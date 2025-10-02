@@ -243,7 +243,7 @@ def calibrate_shifted_simes(fmri_input, alpha, B=100, n_jobs=1, seed=None, k_min
     piv_stat = get_pivotal_stats_shifted(pval0, k_min=k_min)
     lambda_quant = np.quantile(piv_stat, alpha)
     # Compute chosen template
-    shifted_simes_thr = shifted_linear_template(p, p, k_min=k_min, lbd=lambda_quant)
+    shifted_simes_thr = shifted_linear_template(alpha=lambda_quant, k=p, m=p, k_min=k_min)
 
     return pval0, shifted_simes_thr
 
