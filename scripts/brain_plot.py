@@ -12,7 +12,7 @@ from joblib import Memory
 import os
 from nilearn import image
 from nilearn.datasets import fetch_neurovault
-from tools.posthoc_fmri import get_processed_input
+from utils import get_processed_input
 
 # Paths setup
 script_path = os.path.dirname(__file__)
