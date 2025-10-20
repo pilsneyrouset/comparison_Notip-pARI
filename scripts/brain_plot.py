@@ -44,7 +44,7 @@ i = 36
 
 task1 = test_task1s[i]
 task2 = test_task2s[i]
-print("task1: ",task1)
+print("task1:",task1)
 print("task2:", task2)
 
 # Preprocess fMRI input
