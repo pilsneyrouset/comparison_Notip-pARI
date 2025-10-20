@@ -20,9 +20,6 @@ import pandas as pd
 from tqdm import tqdm
 from string import ascii_lowercase
 from scipy import ndimage
-from sanssouci.lambda_calibration import get_pivotal_stats_shifted
-from sanssouci.reference_families import shifted_linear_template
-
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -238,10 +235,10 @@ def calibrate_shifted_simes(fmri_input, alpha, B=100, n_jobs=1, seed=None, k_min
                                                 n_jobs=n_jobs)
 
     # Compute pivotal stats and alpha-level quantile
-    piv_stat = get_pivotal_stats_shifted(pval0, k_min=k_min)
+    piv_stat = sa.get_pivotal_stats_shifted(pval0, k_min=k_min)
     lambda_quant = np.quantile(piv_stat, alpha)
     # Compute chosen template
-    shifted_simes_thr = shifted_linear_template(alpha=lambda_quant, k=p, m=p, k_min=k_min)
+    shifted_simes_thr = sa.shifted_linear_template(alpha=lambda_quant, k=p, m=p, k_min=k_min)
 
     return pval0, shifted_simes_thr
 
