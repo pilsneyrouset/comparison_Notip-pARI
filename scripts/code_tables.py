@@ -13,8 +13,6 @@ from tqdm import tqdm
 # Paths setup
 script_path = os.path.dirname(__file__)
 fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
-fig_path = os.path.join(fig_path_, 'figures')
-os.makedirs(fig_path, exist_ok=True)
 sys.path.append(os.path.abspath(os.path.join(script_path, '..')))
 
 # Fetch NeuroVault dataset
