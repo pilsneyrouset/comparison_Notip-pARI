@@ -31,7 +31,7 @@ First, compute the confidence curves :
 python3 scripts/confidence_curve.py
 ```
 
-Them, plot them using :
+Then, plot them using :
 
 ```
 python3 scripts/confidence_curve_plot.py
