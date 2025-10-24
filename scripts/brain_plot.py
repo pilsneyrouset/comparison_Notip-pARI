@@ -87,7 +87,7 @@ for _, row in df_main.iterrows():
     coord = (row["X"], row["Y"], row["Z"])
     tdp = (row["TDP (ARI)"], row["TDP (Notip)"], row["TDP (pARI)"])
     size = int(row["Cluster Size (mm3)"])
-    view = views.get(cluster_id, 'z')  # valeur par défaut 'z' si non défini
+    view = views.get(cluster_id, 'z')  # default 'z' if missing
 
     clusters[cluster_id] = {
         'coord': coord,
