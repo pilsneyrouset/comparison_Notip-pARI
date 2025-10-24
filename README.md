@@ -18,6 +18,7 @@ To reproduce all tables from the paper, run :
 python3 scripts/code_tables.py
 ```
 #### Brain Visualization
+Before running this script, make sure that the table associated to the contrasts : task001_look_negative_cue_vs_baseline and task001_look_negative_rating_vs_baseline (task36) have already been computed.
 To generate the brain visualization, run :
 
 ```
