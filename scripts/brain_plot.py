@@ -58,24 +58,43 @@ z_map = nifti_masker.inverse_transform(z_vals)
 
 
 # === Clusters ===
-clusters = {
-    1:  {'coord': (-33.0, -94.0, -17.0), 'tdp': (0.38, 0.55, 0.48), 'size': 3213, 'view': 'y'},
-    2:  {'coord': (66.0, 2.0, 16.0),     'tdp': (0.38, 0.77, 0.77), 'size': 7425, 'view': 'z'},
-    3:  {'coord': (-12.0, -82.0, -8.0),  'tdp': (0.46, 0.79, 0.80), 'size': 8397, 'view': 'z'},
-    4:  {'coord': (-6.0, 11.0, 52.0),    'tdp': (0.23, 0.50, 0.49), 'size': 3321, 'view': 'z'},
-    5:  {'coord': (45.0, 14.0, 25.0),    'tdp': (0.38, 0.52, 0.46), 'size': 2835, 'view': 'z'},
-    6:  {'coord': (12.0, -43.0, -26.0),  'tdp': (0.15, 0.20, 0.00), 'size': 1107, 'view': 'z'},
-    7:  {'coord': (39.0, -73.0, 4.0),    'tdp': (0.08, 0.43, 0.42), 'size': 2862, 'view': 'y'},
-    8:  {'coord': (-63.0, -34.0, 16.0),  'tdp': (0.46, 0.82, 0.82), 'size': 9585, 'view': 'z'},
-    9:  {'coord': (-27.0, -19.0, 4.0),   'tdp': (0.06, 0.06, 0.00), 'size': 837, 'view': 'z'},
-    10: {'coord': (36.0, -94.0, -8.0),   'tdp': (0.25, 0.42, 0.30), 'size': 2160, 'view': 'y'},
-    11: {'coord': (12.0, -46.0, 1.0),    'tdp': (0.00, 0.00, 0.00), 'size': 783, 'view': 'x'},
-    12: {'coord': (15.0, 56.0, 19.0),    'tdp': (0.00, 0.00, 0.00), 'size': 297, 'view': 'x'},
-    13: {'coord': (3.0, -25.0, 52.0),    'tdp': (0.00, 0.00, 0.00), 'size': 324, 'view': 'x'},
-    14: {'coord': (0.0, -64.0, -14.0),   'tdp': (0.00, 0.25, 0.14), 'size': 1755, 'view': 'y'},
-    15: {'coord': (54.0, -22.0, 58.0), 'tdp': (0.00, 0.00, 0.00), 'size': 648, 'view': 'y'},
-    16: {'coord': (-45.0, -67.0, 34.0),  'tdp': (0.00, 0.21, 0.13), 'size': 1890, 'view': 'z'},
+df = pd.read_csv("task36/1000_perm_z_threshold_3.5.csv")
+
+# keep only main clusters (numeric IDs)
+df_main = df[df["Cluster ID"].astype(str).str.fullmatch(r"\d+")].copy()
+
+# find last cluster with any nonzero TDP
+last_nonzero_index = None
+for i, row in df_main.iterrows():
+    tdp = (row["TDP (ARI)"], row["TDP (Notip)"], row["TDP (pARI)"])
+    if any(v != 0 and not pd.isna(v) for v in tdp):
+        last_nonzero_index = i
+
+# keep clusters up to that index
+if last_nonzero_index is not None:
+    df_main = df_main.loc[:last_nonzero_index]
+
+# predefined view mapping
+views = {
+    1: 'y', 2: 'z', 3: 'z', 4: 'z', 5: 'z', 6: 'z', 7: 'y', 8: 'z',
+    9: 'z', 10: 'y', 11: 'x', 12: 'x', 13: 'x', 14: 'y', 15: 'y', 16: 'z'
 }
+
+# build clusters dict with view
+clusters = {}
+for _, row in df_main.iterrows():
+    cluster_id = int(row["Cluster ID"])
+    coord = (row["X"], row["Y"], row["Z"])
+    tdp = (row["TDP (ARI)"], row["TDP (Notip)"], row["TDP (pARI)"])
+    size = int(row["Cluster Size (mm3)"])
+    view = views.get(cluster_id, 'z')  # valeur par défaut 'z' si non défini
+
+    clusters[cluster_id] = {
+        'coord': coord,
+        'tdp': tdp,
+        'size': size,
+        'view': view
+    }
 
 threshold = 3.5
 target_y = {1: 120, 2: 85, 3: -130, 4: 85, 5: 110, 6: -110, 7: 95, 8: 85, 
@@ -191,4 +210,4 @@ cbar_ax.add_patch(rect)
 
 annotate_clusters(display, clusters, target_y)
 enlarge_colorbar(display, fig)
-plt.savefig("task36/main_plot.pdf", bbox_inches='tight')
+plt.savefig("task36/brain_plot.pdf", bbox_inches='tight')
