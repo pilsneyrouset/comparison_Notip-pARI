@@ -94,4 +94,4 @@ for i in range(len(test_task1s)):
     secax.set_xlim(ax.get_xlim())
 
     plt.tight_layout()
-    plt.savefig(f'task{i}/confidence_curve_TDP_{alpha}_full.pdf')
+    plt.savefig(f'comparison_Notip-pARI/results/task{i}/confidence_curve_TDP_{alpha}_full.pdf')
