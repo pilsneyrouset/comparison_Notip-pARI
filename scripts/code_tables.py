@@ -37,7 +37,7 @@ for i in tqdm(range(len(test_task1s)), desc="Processing tasks"):
     task1 = test_task1s[i]
     task2 = test_task2s[i]
 
-    path = f'comparison_Notip-pARI/results/task{i}'
+    path = f'results/task{i}'
     os.makedirs(path, exist_ok=True)
 
     # Preprocess fMRI input

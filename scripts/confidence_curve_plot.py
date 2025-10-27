@@ -66,9 +66,9 @@ for i in range(len(test_task1s)):
 
 
     # Load precomputed TDP data
-    TDP_ARI = np.load(f'task{i}/TDP_ARI_{alpha}.npy')
-    TDP_Notip = np.load(f'task{i}/TDP_Notip_{alpha}.npy')
-    TDP_pARI = np.load(f'task{i}/TDP_pARI_{alpha}.npy')
+    TDP_ARI = np.load(f'results/task{i}/TDP_ARI_{alpha}.npy')
+    TDP_Notip = np.load(f'results/task{i}/TDP_Notip_{alpha}.npy')
+    TDP_pARI = np.load(f'results/task{i}/TDP_pARI_{alpha}.npy')
 
     # --- Plot TDP Curve ---
     fig, ax = plt.subplots()
@@ -94,4 +94,4 @@ for i in range(len(test_task1s)):
     secax.set_xlim(ax.get_xlim())
 
     plt.tight_layout()
-    plt.savefig(f'comparison_Notip-pARI/results/task{i}/confidence_curve_TDP_{alpha}_full.pdf')
+    plt.savefig(f'results/task{i}/confidence_curve_TDP_{alpha}_full.pdf')

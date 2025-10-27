@@ -68,13 +68,13 @@ def process_task(i):
     # === ARI TDP ===
     ari_thr = sa.linear_template(alpha, hommel, hommel)
     TDP_ARI = curve_min_tdp(p_values, ari_thr)
-    np.save(f"task{i}/TDP_ARI_{alpha}.npy", TDP_ARI)
+    np.save(f"results/task{i}/TDP_ARI_{alpha}.npy", TDP_ARI)
     print(f"TDP ARI saved for task: {i}")
 
     # === pARI TDP ===
     pval0, pari_thr = calibrate_shifted_simes(fmri_input, alpha, B=B, seed=seed, k_min=delta)
     TDP_pARI = curve_min_tdp(p_values, pari_thr)
-    np.save(f"task{i}/TDP_pARI_{alpha}.npy", TDP_pARI)
+    np.save(f"results/task{i}/TDP_pARI_{alpha}.npy", TDP_pARI)
     print(f"TDP pARI saved for task: {i}")
 
     # === Notip training ===
@@ -88,7 +88,7 @@ def process_task(i):
     # === Notip TDP ===
     notip_thr = sa.calibrate_jer(alpha, learned_templates, pval0, k_max)
     TDP_notip = curve_min_tdp(p_values, notip_thr)
-    np.save(f"task{i}/TDP_Notip_{alpha}.npy", TDP_notip)
+    np.save(f"results/task{i}/TDP_Notip_{alpha}.npy", TDP_notip)
     print(f"TDP Notip saved for task: {i}")
 
 

@@ -17,8 +17,6 @@ from utils import get_processed_input
 # Paths setup
 script_path = os.path.dirname(__file__)
 fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
-fig_path = os.path.join(fig_path_, 'figures')
-os.makedirs(fig_path, exist_ok=True)
 sys.path.append(os.path.abspath(os.path.join(script_path, '..')))
 
 # Parameters
@@ -58,7 +56,7 @@ z_map = nifti_masker.inverse_transform(z_vals)
 
 
 # === Clusters ===
-df = pd.read_csv("task36/1000_perm_z_threshold_3.5.csv")
+df = pd.read_csv("results/task36/1000_perm_z_threshold_3.5.csv")
 
 # keep only main clusters (numeric IDs)
 df_main = df[df["Cluster ID"].astype(str).str.fullmatch(r"\d+")].copy()
@@ -210,4 +208,4 @@ cbar_ax.add_patch(rect)
 
 annotate_clusters(display, clusters, target_y)
 enlarge_colorbar(display, fig)
-plt.savefig("comparison_Notip-pARI/results/task36/brain_plot.pdf", bbox_inches='tight')
+plt.savefig("results/task36/brain_plot.pdf", bbox_inches='tight')
