@@ -1,7 +1,9 @@
 # Notip vs pARI : Comparison of Post Hoc inference methods for fMRI
 
-This repository contains the code to reproduce all experiments of the paper (METTRE LIEN VERS ARTICLE).
-Note that the first time you run one of those scripts, the fMRI data fetching from Neurovault will take place, which takes a significant amount of time. This only needs to be done once.
+This repository contains the code to reproduce all experiments of the paper "Cluster Size Matters: A Comparative Study of Notip and pARI for Post Hoc Inference in fMRI"
+by Nils Peyrouset, Pierre Neuvial, and Bertrand Thirion.
+
+Note that the first time these scripts are run, the fMRI data fetching from Neurovault will take place, which takes a significant amount of time. This only needs to be done once.
 
 ## Installing dependencies
 
