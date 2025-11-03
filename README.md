@@ -22,10 +22,6 @@ python3 scripts/code_tables.py
 These results can be visualized as follows (Figure 3, using R):
 
 ```r
-library("tidyr")
-library("ggplot2")
-library("scales")
-
 source("scripts/figure-3.R")
 ```
 
