@@ -12,12 +12,25 @@ python -m pip install -r requirements.txt
 ### Reproducing figures
 
 #### Tables
+
 To reproduce all tables from the paper, run :
 
 ```
 python3 scripts/code_tables.py
 ```
-#### Brain Visualization
+
+These results can be visualized as follows (Figure 3, using R):
+
+```r
+library("tidyr")
+library("ggplot2")
+library("scales")
+
+source("scripts/figure-3.R")
+```
+
+#### Brain Visualization (Figure 1)
+
 Before running this script, make sure that the table associated to the contrasts : task001_look_negative_cue_vs_baseline and task001_look_negative_rating_vs_baseline (task36) have already been computed.
 To generate the brain visualization, run :
 
@@ -25,7 +38,8 @@ To generate the brain visualization, run :
 python3 scripts/brain_plot.py
 ```
 
-#### Plot TDP curves
+#### Plot TDP curves (Figure 2)
+
 First, compute the confidence curves :
 
 ```
