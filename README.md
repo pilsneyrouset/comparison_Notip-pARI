@@ -2,6 +2,7 @@
 
 This repository contains the code to reproduce all experiments of the paper "Cluster Size Matters: A Comparative Study of Notip and pARI for Post Hoc Inference in fMRI"
 by Nils Peyrouset, Pierre Neuvial, and Bertrand Thirion.
+Preprint available at: https://arxiv.org/abs/2511.02422
 
 Note that the first time these scripts are run, the fMRI data fetching from Neurovault will take place, which takes a significant amount of time. This only needs to be done once.
 
