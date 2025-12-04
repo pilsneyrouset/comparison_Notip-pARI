@@ -79,13 +79,13 @@ def compute_for_task(i, task1, task2):
         ari_thr = sa.linear_template(alpha, hommel, hommel)
 
         # --- Simes ---
-        pval0_simes, simes_thr = calibrate_simes(
+        _, simes_thr = calibrate_simes(
             fmri_input, alpha,
             k_max=1000, B=B_calib, n_jobs=n_jobs, seed=seed
         )
 
         # --- Shifted Simes (pARI) ---
-        pval0_shifted, pari_thr = calibrate_shifted_simes(
+        _, pari_thr = calibrate_shifted_simes(
             fmri_input, alpha,
             B=B_calib, n_jobs=n_jobs, seed=seed, k_min=delta
         )
@@ -103,9 +103,7 @@ def compute_for_task(i, task1, task2):
             ari_thr=ari_thr,
             simes_thr=simes_thr,
             pari_thr=pari_thr,
-            notip_thr=notip_thr,
-            pval0_simes=pval0_simes,
-            pval0_notip=pval0,
+            notip_thr=notip_thr
         )
 
         # save immediately
