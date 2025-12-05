@@ -23,15 +23,16 @@ fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
 sys.path.append(os.path.abspath(os.path.join(script_path, '..')))
 
 
-# -------------------- PARAMÈTRES --------------------
+# -------------------- PARAMETERS --------------------
 OUT_DIR = "results/thresholds"
 os.makedirs(OUT_DIR, exist_ok=True)
 
-ALPHAS = [0.1, 0.05]   # <--- les deux valeurs
+ALPHAS = [0.1, 0.05]
 B_train = 10000        
 B_calib = 10000        
-n_jobs = 10
+n_jobs = 5
 seed = 42
+training_seed = 23
 delta = 27
 
 # Load dataset contrasts
@@ -53,18 +54,17 @@ def compute_for_task(i, task1, task2):
     z_vals = norm.isf(p_values)
     z_nonzero = z_vals[z_vals != 0]
 
-    # ----- Permutations for Simes / Notip (only once!) -----
-    print(f"[{i}] Permutations (B={B_calib})...")
+    # ----- Permutations for pARI / Notip  -----
+    print(f"[{i}] Permutations (B={B_calib})")
     pval0 = sa.get_permuted_p_values_one_sample(
         fmri_input, B=B_calib, n_jobs=n_jobs, seed=seed
     )
 
-    # ----- Data-driven template (only once!) -----
-    print(f"[{i}] Training data-driven templates (Notip, B={B_train})...")
+    # ----- Data-driven template  -----
+    print(f"[{i}] Training data-driven templates (Notip, B={B_train})")
     learned_templates = get_data_driven_template_two_tasks(
-        task1, task2, B=B_train, seed=seed
+        task1, task2, B=B_train, seed=training_seed
     )
-    learned_templates_sorted = np.sort(learned_templates, axis=0)
 
     # ------------------------------------------------------
     #       COMPUTE THRESHOLDS FOR EACH α IN ALPHAS
@@ -93,7 +93,7 @@ def compute_for_task(i, task1, task2):
         # --- Notip ---
         notip_thr = calibrate_jer(
             alpha,
-            learned_templates_sorted,
+            learned_templates,
             pval0,
             k_max=1000
         )
@@ -117,7 +117,7 @@ def compute_for_task(i, task1, task2):
 
 
 # -------------------- PARALLEL EXECUTION --------------------
-results = Parallel(n_jobs=4)(
+results = Parallel(n_jobs=n_jobs)(
     delayed(compute_for_task)(i, t1, t2)
     for i, (t1, t2) in enumerate(tasks)
 )
