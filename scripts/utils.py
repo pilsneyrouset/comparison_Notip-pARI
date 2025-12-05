@@ -5,7 +5,7 @@ and utilitary functions to use SansSouci on fMRI data (author = A.Blain)
 import warnings
 import numpy as np
 from scipy.stats import norm
-from nilearn.input_data import NiftiMasker
+from nilearn.maskers import NiftiMasker
 from nilearn.image import threshold_img
 from nilearn.image.resampling import coord_transform
 from nilearn._utils import check_niimg_3d
@@ -279,11 +279,11 @@ def ari_inference(p_values, tdp, alpha, nifti_masker):
     return z_unmasked, region_size_ARI
 
 
-def get_clusters_table_with_TDP(stat_img, fmri_input, stat_threshold=3,
+def get_clusters_table_with_TDP_task(stat_img, task_id, stat_threshold=3,
                                 alpha=0.05,
-                                k_max=1000, n_permutations=1000, cluster_threshold=None,
+                                cluster_threshold=None,
                                 methods=['Notip'],
-                                two_sided=False, min_distance=8., n_jobs=2, seed=None, delta=27):
+                                two_sided=False, min_distance=8.):
     """Creates pandas dataframe with img cluster statistics.
     Parameters
     ----------
@@ -325,19 +325,25 @@ def get_clusters_table_with_TDP(stat_img, fmri_input, stat_threshold=3,
     stat_img = check_niimg_3d(stat_img)
 
     stat_map_ = safe_get_data(stat_img)
-    # Perform calibration before thresholding
-    stat_map_nonzero = stat_map_[stat_map_ != 0]
-    hommel = _compute_hommel_value(stat_map_nonzero, alpha)
-    ari_thr = sa.linear_template(alpha, hommel, hommel)
-    pval0, simes_thr = calibrate_simes(fmri_input, alpha,
-                                       k_max=k_max, B=n_permutations, seed=seed)
-    learned_templates_ = sa.get_permuted_p_values_one_sample(fmri_input,
-                                                             B=n_permutations,
-                                                             n_jobs=n_jobs,
-                                                             seed=None)
-    learned_templates = np.sort(learned_templates_, axis=0)
-    notip_thr = calibrate_jer(alpha, learned_templates, pval0, k_max)
-    _, pari_thr = calibrate_shifted_simes(fmri_input, alpha, B=n_permutations, seed=seed, k_min=delta)
+    
+    threshold_dir = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '..', 'results', 'thresholds')
+    )
+
+    threshold_path = os.path.join(
+        threshold_dir,
+        f"thresholds_task{task_id}_alpha{alpha}.npz"
+    )
+
+    if not os.path.exists(threshold_path):
+        raise FileNotFoundError(f"[ERROR] Threshold file not found:\n{threshold_path}")
+
+    # Load thresholds
+    thr = np.load(threshold_path)
+    ari_thr = thr["ari_thr"]
+    simes_thr = thr["simes_thr"]
+    pari_thr = thr["pari_thr"]
+    notip_thr = thr["notip_thr"]
 
     # Apply threshold(s) to image
     stat_img = threshold_img(
