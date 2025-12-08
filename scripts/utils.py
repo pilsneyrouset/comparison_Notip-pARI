@@ -21,6 +21,7 @@ from tqdm import tqdm
 from string import ascii_lowercase
 from scipy import ndimage
 import sys
+from sanssouci.post_hoc_bounds import min_tdp
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -399,10 +400,10 @@ def get_clusters_table_with_TDP_task(stat_img, task_id, stat_threshold=3,
             masked_data_ = masked_data[masked_data != 0]
             # Compute TDP bounds on cluster using our 3 methods
             cluster_p_values = norm.sf(masked_data_)
-            ari_tdp = sa.min_tdp(cluster_p_values, ari_thr)
-            notip_tdp = sa.min_tdp(cluster_p_values, notip_thr)
+            ari_tdp = min_tdp(cluster_p_values, ari_thr)
+            notip_tdp = min_tdp(cluster_p_values, notip_thr)
             cluster_size_mm = int(np.sum(cluster_mask) * voxel_size)
-            pari_tdp = sa.min_tdp(cluster_p_values, pari_thr)
+            pari_tdp = min_tdp(cluster_p_values, pari_thr)
 
             # Get peaks, subpeaks and associated statistics
             subpeak_ijk, subpeak_vals = _local_max(
