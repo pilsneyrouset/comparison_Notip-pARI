@@ -78,12 +78,6 @@ def compute_for_task(i, task1, task2):
         hommel = _compute_hommel_value(z_nonzero, alpha)
         ari_thr = sa.linear_template(alpha, hommel, hommel)
 
-        # --- Simes ---
-        _, simes_thr = calibrate_simes(
-            fmri_input, alpha,
-            k_max=1000, B=B_calib, n_jobs=n_jobs, seed=seed
-        )
-
         # --- Shifted Simes (pARI) ---
         _, pari_thr = calibrate_shifted_simes(
             fmri_input, alpha,
@@ -101,12 +95,11 @@ def compute_for_task(i, task1, task2):
         # store results
         outputs[alpha] = dict(
             ari_thr=ari_thr,
-            simes_thr=simes_thr,
             pari_thr=pari_thr,
             notip_thr=notip_thr
         )
 
-        # save immediately
+        # save results
         fname = os.path.join(
             OUT_DIR, f"thresholds_task{i}_alpha{alpha}.npz"
         )
