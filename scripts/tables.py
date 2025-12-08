@@ -6,7 +6,7 @@ from joblib import Memory
 from scipy import stats
 from scipy.stats import norm
 import os
-from utils import get_clusters_table_with_TDP, get_clusters_table_with_TDP_task, get_processed_input
+from utils import get_clusters_table_with_TDP_task, get_processed_input
 from nilearn.datasets import fetch_neurovault
 from tqdm import tqdm
 
@@ -37,7 +37,7 @@ for i in tqdm(range(len(test_task1s)), desc="Processing tasks"):
     task1 = test_task1s[i]
     task2 = test_task2s[i]
 
-    path = f'results/task{i}'
+    path = f'results/contrast{i}'
     os.makedirs(path, exist_ok=True)
 
     # Preprocess fMRI input
@@ -56,5 +56,6 @@ for i in tqdm(range(len(test_task1s)), desc="Processing tasks"):
             stat_threshold=z,
             methods=['ARI', 'Notip', 'pARI']
         )
-        output_file = os.path.join(path, f'{n_perm}_perm_z_threshold_{z}.csv')
+        output_file = os.path.join(path, f'z_threshold_{z}.csv')
+
         df.to_csv(output_file, index=False)

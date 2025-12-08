@@ -3,10 +3,10 @@ library("knitr")
 library("kableExtra")
 
 path <- "results"
-task <- "task36"
+task <- "contrast36"
 
 datasets <- list.files(path, pattern = task)
-patt <- "1000_perm_z_threshold_(.*).csv"
+patt <- "z_threshold_(.*).csv"
 res_list <- lapply(datasets, FUN = function(ds_name) {
   path_ds <- file.path(path, ds_name)
   filenames <- list.files(path_ds, pattern = patt)

@@ -3,8 +3,8 @@ library("ggplot2")
 library("scales")
 
 path <- "results"
-datasets <- list.files(path, pattern = "task")
-patt <- "1000_perm_z_threshold_(.*).csv"
+datasets <- list.files(path, pattern = "contrast")
+patt <- "z_threshold_(.*).csv"
 res_list <- lapply(datasets, FUN = function(ds_name) {
   path_ds <- file.path(path, ds_name)
   filenames <- list.files(path_ds, pattern = patt)

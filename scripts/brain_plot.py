@@ -38,10 +38,10 @@ memory = Memory(location, mmap_mode='r', verbose=0)
 # Load task contrasts from dataset
 df_tasks = pd.read_csv(os.path.join(script_path, 'contrast_list2.csv'))
 test_task1s, test_task2s = df_tasks['task1'], df_tasks['task2']
-i = 36
+id_task = 36
 
-task1 = test_task1s[i]
-task2 = test_task2s[i]
+task1 = test_task1s[id_task]
+task2 = test_task2s[id_task]
 print("task1:",task1)
 print("task2:", task2)
 
@@ -56,7 +56,7 @@ z_map = nifti_masker.inverse_transform(z_vals)
 
 
 # === Clusters ===
-df = pd.read_csv("results/task36/1000_perm_z_threshold_3.5.csv")
+df = pd.read_csv(f"results/contrast{id_task}/z_threshold_3.5.csv")
 
 # keep only main clusters (numeric IDs)
 df_main = df[df["Cluster ID"].astype(str).str.fullmatch(r"\d+")].copy()
@@ -208,4 +208,4 @@ cbar_ax.add_patch(rect)
 
 annotate_clusters(display, clusters, target_y)
 enlarge_colorbar(display, fig)
-plt.savefig("results/task36/brain_plot.pdf", bbox_inches='tight')
+plt.savefig(f"results/contrast{id_task}/brain_plot.pdf", bbox_inches='tight')

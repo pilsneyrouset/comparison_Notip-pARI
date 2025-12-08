@@ -114,5 +114,5 @@ for i in range(len(test_task1s)):
     secax.set_xlim(ax.get_xlim())
 
     plt.tight_layout()
-    plt.savefig(f'results/task{i}/confidence_curve_TDP_{alpha}_full.pdf')
+    plt.savefig(f'results/contrast{i}/confidence_curve_TDP_{alpha}_full.pdf')
     print(f"Plot completed for task {i}")
