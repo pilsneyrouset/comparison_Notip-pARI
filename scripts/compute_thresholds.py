@@ -98,7 +98,7 @@ def compute_for_task(i, task1, task2):
 
         # save results
         fname = os.path.join(
-            OUT_DIR, f"thresholds_task{i}_alpha{alpha}.npz"
+            OUT_DIR, f"thresholds_contrast{i}_alpha{alpha}.npz"
         )
         np.savez_compressed(fname, **outputs[alpha])
         print(f"[{i}] Saved -> {fname}")
