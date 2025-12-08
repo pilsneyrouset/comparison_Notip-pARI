@@ -31,6 +31,7 @@ n_jobs = 5
 seed = 42
 training_seed = 23
 delta = 27
+k_max = 1000
 
 # Load dataset contrasts
 df_tasks = pd.read_csv(os.path.join(script_path, 'contrast_list2.csv'))
@@ -86,7 +87,7 @@ def compute_for_task(i, task1, task2):
             alpha,
             learned_templates,
             pval0,
-            k_max=1000
+            k_max=k_max
         )
 
         # store results
