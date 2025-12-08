@@ -7,13 +7,10 @@ from tqdm import tqdm
 import sanssouci as sa
 from utils import (
     get_processed_input,
-    calibrate_simes,
     calibrate_shifted_simes,
     get_data_driven_template_two_tasks,
     _compute_hommel_value
 )
-from sanssouci.lambda_calibration import calibrate_jer
-
 from scipy import stats
 from scipy.stats import norm
 
@@ -85,7 +82,7 @@ def compute_for_task(i, task1, task2):
         )
 
         # --- Notip ---
-        notip_thr = calibrate_jer(
+        notip_thr = sa.calibrate_jer(
             alpha,
             learned_templates,
             pval0,
