@@ -65,7 +65,7 @@ for i in range(len(test_task1s)):
 
     threshold_path = os.path.join(
         threshold_dir,
-        f"thresholds_task{i}_alpha{alpha}.npz"
+        f"thresholds_contrast{i}_alpha{alpha}.npz"
     )
 
     if not os.path.exists(threshold_path):
