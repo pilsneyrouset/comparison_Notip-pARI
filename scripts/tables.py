@@ -54,7 +54,7 @@ for i in tqdm(range(len(test_task1s)), desc="Processing tasks"):
             z_map,
             task_id=i,
             stat_threshold=z,
-            methods=['ARI', 'Notip', 'pARI']
+            methods=['ARI', 'Notip', 'pARI', 'pARI1']
         )
         output_file = os.path.join(path, f'z_threshold_{z}.csv')
 

@@ -20,7 +20,7 @@ sys.path.append(os.path.abspath(os.path.join(script_path, '..')))
 
 # Parameters
 seed = 42
-alpha = 0.05
+alpha = 0.1
 B = 10000
 n_train = 10000
 smoothing_fwhm = 4
@@ -83,6 +83,19 @@ for i in range(len(test_task1s)):
     notip_thr = thr["notip_thr"]
     TDP_Notip = sa.curve_min_tdp(p_values, notip_thr)
 
+    threshold_path1 = os.path.join(
+        threshold_dir,
+        f"thresholds_contrast{i}_alpha{alpha}_delta1.npz"
+    )
+
+    if not os.path.exists(threshold_path1):
+        raise FileNotFoundError(f"[ERROR] Threshold file not found:\n{threshold_path1}")
+
+    thr1 = np.load(threshold_path1)
+
+    pari1_thr = thr1["pari_thr"]
+    TDP_pARI1 = sa.curve_min_tdp(p_values, pari1_thr)
+
     # Set up ticks for secondary axis
     z_max = int(np.floor(np.max(stat_map_)))
     z_ticks = list(np.arange(1, z_max + 1))  # + [3.5, 4.5]
@@ -95,6 +108,7 @@ for i in range(len(test_task1s)):
     ax.plot(TDP_ARI, label='ARI', color='red', alpha=0.5)
     ax.plot(TDP_Notip, label='Notip', color='green', alpha=0.5)
     ax.plot(TDP_pARI, label='pARI', color='blue', alpha=0.5)
+    ax.plot(TDP_pARI1, label='pARI1', color='pink')
     for (z, count), thresh in zip(sorted(voxel_counts.items()), np.linspace(0.3, 0.9, len(voxel_counts))):
         ax.axvline(x=count, color='purple', linestyle='--', alpha=thresh)
     ax.set_xscale("log")
