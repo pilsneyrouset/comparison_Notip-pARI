@@ -97,6 +97,19 @@ for alpha in ALPHAS:
         pari1_thr = thr1["pari_thr"]
         TDP_pARI1 = sa.curve_min_tdp(p_values, pari1_thr)
 
+        threshold_path2 = os.path.join(
+            threshold_dir,
+            f"thresholds_contrast{i}_alpha{alpha}_calibrated_simes.npz"
+        )
+
+        if not os.path.exists(threshold_path2):
+            raise FileNotFoundError(f"[ERROR] Threshold file not found:\n{threshold_path1}")
+
+        thr2 = np.load(threshold_path2)
+
+        calibrated_simes_thr = thr2["calibrated_simes_thr"]
+        TDP_calibrated_simes = sa.curve_min_tdp(p_values, calibrated_simes_thr)
+
         # Set up ticks for secondary axis
         z_max = int(np.floor(np.max(stat_map_)))
         z_ticks = list(np.arange(1, z_max + 1))  # + [3.5, 4.5]
@@ -110,6 +123,8 @@ for alpha in ALPHAS:
         ax.plot(np.arange(1, len(TDP_pARI1)+1), TDP_Notip, label='Notip', color='green', alpha=0.5)
         ax.plot(np.arange(1, len(TDP_pARI1)+1), TDP_pARI, label=r'pARI ($\delta=27$)', color='blue', alpha=0.5)
         ax.plot(np.arange(1, len(TDP_pARI1)+1), TDP_pARI1, label=r'pARI ($\delta=1$)', color='pink')
+        ax.plot(np.arange(1, len(TDP_pARI1)+1), TDP_calibrated_simes, label=r'pARI ($\delta=0$)', color='orange')
+
         for (z, count), thresh in zip(sorted(voxel_counts.items()), np.linspace(0.3, 0.9, len(voxel_counts))):
             ax.axvline(x=count, color='purple', linestyle='--', alpha=thresh)
         ax.set_xscale("log")
