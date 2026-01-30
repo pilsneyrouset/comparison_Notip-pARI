@@ -84,30 +84,10 @@ for alpha in ALPHAS:
         notip_thr = thr["notip_thr"]
         TDP_Notip = sa.curve_min_tdp(p_values, notip_thr)
 
-        threshold_path1 = os.path.join(
-            threshold_dir,
-            f"thresholds_contrast{i}_alpha{alpha}_delta1.npz"
-        )
-
-        if not os.path.exists(threshold_path1):
-            raise FileNotFoundError(f"[ERROR] Threshold file not found:\n{threshold_path1}")
-
-        thr1 = np.load(threshold_path1)
-
-        pari1_thr = thr1["pari_thr"]
+        pari1_thr = thr["pari1_thr"]
         TDP_pARI1 = sa.curve_min_tdp(p_values, pari1_thr)
 
-        threshold_path2 = os.path.join(
-            threshold_dir,
-            f"thresholds_contrast{i}_alpha{alpha}_calibrated_simes.npz"
-        )
-
-        if not os.path.exists(threshold_path2):
-            raise FileNotFoundError(f"[ERROR] Threshold file not found:\n{threshold_path1}")
-
-        thr2 = np.load(threshold_path2)
-
-        calibrated_simes_thr = thr2["calibrated_simes_thr"]
+        calibrated_simes_thr = thr["pari0_thr"]
         TDP_calibrated_simes = sa.curve_min_tdp(p_values, calibrated_simes_thr)
 
         # Set up ticks for secondary axis
