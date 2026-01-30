@@ -46,6 +46,7 @@ def compute_for_task(i, task1, task2):
     fmri_input, _ = get_processed_input(task1, task2,
                                         smoothing_fwhm=4,
                                         collection=1952)
+    p = fmri_input.shape[1]
 
     # ----- Compute Z-values (common to all alphas) -----
     stats_, p_values = stats.ttest_1samp(fmri_input, 0)
@@ -82,6 +83,19 @@ def compute_for_task(i, task1, task2):
             B=B_calib, n_jobs=n_jobs, seed=seed, k_min=delta
         )
 
+        # --- Calibrated Simes ---
+        _, calibrated_simes_thr = calibrate_shifted_simes(fmri_input,
+                alpha, k_max=p, B=B_calib, n_jobs=n_jobs, seed=seed
+
+        )
+
+        # --- pARI with delta=1
+        _, pari1_thr = calibrate_shifted_simes(
+            fmri_input, alpha,
+            B=B_calib, n_jobs=n_jobs, seed=seed, k_min=1
+        )
+
+
         # --- Notip ---
         notip_thr = sa.calibrate_jer(
             alpha,
@@ -94,7 +108,9 @@ def compute_for_task(i, task1, task2):
         outputs[alpha] = dict(
             ari_thr=ari_thr,
             pari_thr=pari_thr,
-            notip_thr=notip_thr
+            notip_thr=notip_thr,
+            pari1_thr=pari1_thr,
+            pari0_thr=calibrated_simes_thr
         )
 
         # save results
