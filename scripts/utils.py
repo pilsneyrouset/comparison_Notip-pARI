@@ -415,6 +415,7 @@ def get_clusters_table_with_TDP_task(stat_img, task_id, stat_threshold=3,
             ari_tdp = min_tdp(cluster_p_values, ari_thr)
             notip_tdp = min_tdp(cluster_p_values, notip_thr)
             cluster_size_mm = int(np.sum(cluster_mask) * voxel_size)
+            voxel_number = cluster_size_mm / 27
             pari_tdp = min_tdp(cluster_p_values, pari_thr)
             pari1_tdp = min_tdp(cluster_p_values, pari1_thr)
 
@@ -440,8 +441,10 @@ def get_clusters_table_with_TDP_task(stat_img, task_id, stat_threshold=3,
             for subpeak in range(n_subpeaks):
                 if subpeak == 0:
                     if methods == ['ARI', 'Notip', 'pARI', 'pARI1']:
-                        cols = ['Cluster ID', 'X', 'Y', 'Z', 'Peak Stat', 'Cluster Size (mm3)',
-                                    'TDP (ARI)', 'TDP (Notip)', 'TDP (pARI)', 'TDP (pARI1)']
+                        cols = ['Cluster ID', 'X', 'Y', 'Z', 'Peak Stat',
+                            'Cluster Size (mm3)', 'Number of Voxels',
+                            'TDP (ARI)', 'TDP (Notip)', 'TDP (pARI)', 'TDP (pARI1)']
+
                         row = [
                             c_id + 1,
                             subpeak_xyz[subpeak, 0],
@@ -449,13 +452,14 @@ def get_clusters_table_with_TDP_task(stat_img, task_id, stat_threshold=3,
                             subpeak_xyz[subpeak, 2],
                             "{0:.2f}".format(subpeak_vals[subpeak]),
                             cluster_size_mm,
+                            int(round(voxel_number)),
                             "{0:.2f}".format(ari_tdp),
                             "{0:.2f}".format(notip_tdp),
                             "{0:.2f}".format(pari_tdp),
                             "{0:.2f}".format(pari1_tdp)]
                     else:
                         cols = ['Cluster ID', 'X', 'Y', 'Z', 'Peak Stat', 'Cluster Size (mm3)',
-                                'TDP (Notip)']
+                                'Number of Voxels', 'TDP (Notip)']
                         row = [
                             c_id + 1,
                             subpeak_xyz[subpeak, 0],
@@ -463,6 +467,7 @@ def get_clusters_table_with_TDP_task(stat_img, task_id, stat_threshold=3,
                             subpeak_xyz[subpeak, 2],
                             "{0:.2f}".format(subpeak_vals[subpeak]),
                             cluster_size_mm,
+                            int(round(voxel_number)),
                             "{0:.2f}".format(notip_tdp)]                           
                                     
                 else:
@@ -478,6 +483,7 @@ def get_clusters_table_with_TDP_task(stat_img, task_id, stat_threshold=3,
                         subpeak_xyz[subpeak, 1],
                         subpeak_xyz[subpeak, 2],
                         "{0:.2f}".format(subpeak_vals[subpeak]),
+                        '',
                         '']
                     
                     row += [''] * len(methods)
@@ -488,8 +494,9 @@ def get_clusters_table_with_TDP_task(stat_img, task_id, stat_threshold=3,
         no_clusters_found = False
 
     if no_clusters_found:
-        cols = ['Cluster ID', 'X', 'Y', 'Z', 'Peak Stat', 'Cluster Size (mm3)',
-                                    'TDP (ARI)', 'TDP (Notip)', 'TDP (pARI)', 'TDP (pARI1)']
+        cols = ['Cluster ID', 'X', 'Y', 'Z', 'Peak Stat',
+                'Cluster Size (mm3)', 'Number of Voxels',
+                'TDP (ARI)', 'TDP (Notip)', 'TDP (pARI)', 'TDP (pARI1)']
         df = pd.DataFrame(columns=cols)
     else:
         df = pd.DataFrame(columns=cols, data=rows)
