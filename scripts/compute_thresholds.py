@@ -10,8 +10,6 @@ from scipy.stats import norm
 from utils import (
     Timer,
     _compute_hommel_value,
-    calibrate_shifted_simes,
-    calibrate_simes,
     get_data_driven_template_two_tasks,
     get_processed_input,
 )
@@ -45,10 +43,11 @@ tasks = list(zip(test_task1s, test_task2s))
 # ------------------- CORE FUNCTION -------------------
 def compute_for_task(i, task1, task2):
     t = Timer()
-    t.log(f"[{i}] Loading fMRI input for {task1} vs {task2}")
-    fmri_input, _ = get_processed_input(task1, task2,
-                                        smoothing_fwhm=4,
-                                        collection=1952)
+
+    with t.step(f"[{i}] Loading fMRI input for {task1} vs {task2}"):
+        fmri_input, _ = get_processed_input(task1, task2,
+                                            smoothing_fwhm=4,
+                                            collection=1952)
     p = fmri_input.shape[1]
 
     # ----- Compute Z-values (common to all alphas) -----
@@ -57,86 +56,87 @@ def compute_for_task(i, task1, task2):
     z_nonzero = z_vals[z_vals != 0]
 
     # ----- Permutations for pARI / Notip  -----
-    t.log(f"[{i}] Permutations (B={B_calib})")
-    pval0 = sa.get_permuted_p_values_one_sample(
-        fmri_input, B=B_calib, n_jobs=n_jobs, seed=seed
-    )
+    with t.step(f"[{i}] Permutations (B={B_calib})"):
+        pval0 = sa.get_permuted_p_values_one_sample(
+            fmri_input, B=B_calib, n_jobs=n_jobs, seed=seed
+        )
 
     # ----- Data-driven template  -----
-    t.log(f"[{i}] Training data-driven templates (Notip, B={B_train})")
-    learned_templates = get_data_driven_template_two_tasks(
-        task1, task2, B=B_train, seed=training_seed
-    )
+    with t.step(f"[{i}] Training data-driven templates (Notip, B={B_train})"):
+        learned_templates = get_data_driven_template_two_tasks(
+            task1, task2, B=B_train, seed=training_seed
+        )
 
-    # ------------------------------------------------------
-    #       COMPUTE THRESHOLDS FOR EACH α IN ALPHAS
+    # ----- Pivotal stats: independent of alpha -----
+    with t.step(f"[{i}] Computing pivotal stats (Simes + shifted Simes x3)"):
+        piv_stat_simes = sa.get_pivotal_stats(pval0, K=p)
+        piv_stat_pari = sa.get_pivotal_stats_shifted(pval0, k_min=delta)
+        piv_stat_pari0 = sa.get_pivotal_stats_shifted(pval0, k_min=0)
+        piv_stat_pari1 = sa.get_pivotal_stats_shifted(pval0, k_min=1)
+
+    # ----- Compute thresholds for each alpha in ALPHAS -----
+    #       (only the quantile + template step left)
     # ------------------------------------------------------
     outputs = {}
 
     for alpha in ALPHAS:
-        t.log(f"[{i}] Computing thresholds for alpha={alpha}")
+        with t.step(f"[{i}] Computing thresholds for alpha={alpha}"):
 
-        # --- Hommel & ARI ---
-        hommel = _compute_hommel_value(z_nonzero, alpha)
-        ari_thr = sa.linear_template(alpha, hommel, hommel)
+            # --- Hommel & ARI ---
+            hommel = _compute_hommel_value(z_nonzero, alpha)
+            ari_thr = sa.linear_template(alpha, hommel, hommel)
 
-        # --- Shifted Simes (pARI) ---
-        _, pari_thr = calibrate_shifted_simes(
-            fmri_input, alpha,
-            B=B_calib, n_jobs=n_jobs, seed=seed, k_min=delta
-        )
+            # --- Shifted Simes (pARI) ---
+            lambda_quant = np.quantile(piv_stat_pari, alpha)
+            pari_thr = sa.shifted_linear_template(alpha=lambda_quant, k=p, m=p, k_min=delta)
 
-        # --- Calibrated Simes ---
-        _, calibrated_simes_thr = calibrate_simes(fmri_input,
-                alpha, k_max=p, B=B_calib, n_jobs=n_jobs, seed=seed
+            # --- Calibrated Simes ---
+            lambda_quant = np.quantile(piv_stat_simes, alpha)
+            calibrated_simes_thr = sa.linear_template(lambda_quant, p, p)
 
-        )
+            # --- pARI with delta=0
+            lambda_quant = np.quantile(piv_stat_pari0, alpha)
+            pari0_thr = sa.shifted_linear_template(alpha=lambda_quant, k=p, m=p, k_min=0)
 
-        # --- pARI with delta=0
-        _, pari0_thr = calibrate_shifted_simes(
-            fmri_input, alpha,
-            B=B_calib, n_jobs=n_jobs, seed=seed, k_min=0
-        )
+            # --- pARI with delta=1
+            lambda_quant = np.quantile(piv_stat_pari1, alpha)
+            pari1_thr = sa.shifted_linear_template(alpha=lambda_quant, k=p, m=p, k_min=1)
 
-        # --- pARI with delta=1
-        _, pari1_thr = calibrate_shifted_simes(
-            fmri_input, alpha,
-            B=B_calib, n_jobs=n_jobs, seed=seed, k_min=1
-        )
+            # --- Notip ---
+            notip_thr = sa.calibrate_jer(
+                alpha,
+                learned_templates,
+                pval0,
+                k_max=k_max
+            )
 
+            # sanity check: pARI with k_min=0 and calibrated Simes should coincide
+            if not np.allclose(pari0_thr, calibrated_simes_thr):
+                print(f"[{i}] WARNING: pari0_thr != calibrated_simes_thr for alpha={alpha}")
 
-        # --- Notip ---
-        notip_thr = sa.calibrate_jer(
-            alpha,
-            learned_templates,
-            pval0,
-            k_max=k_max
-        )
+            # store results
+            outputs[alpha] = {
+                'ari_thr': ari_thr,
+                'pari_thr': pari_thr,
+                'notip_thr': notip_thr,
+                'pari1_thr': pari1_thr,
+                'pari0_thr': pari0_thr
+            }
 
-        # store results
-        outputs[alpha] = {
-            'ari_thr': ari_thr,
-            'pari_thr': pari_thr,
-            'notip_thr': notip_thr,
-            'pari1_thr': pari1_thr,
-            'pari0_thr': calibrated_simes_thr,
-            'pari0_thr2': pari1_thr
-        }
-
-        # save results
-        fname = os.path.join(
-            OUT_DIR, f"thresholds_contrast{i}_alpha{alpha}.npz"
-        )
-        np.savez_compressed(fname, **outputs[alpha])
-        t.log(f"[{i}] Saved -> {fname}")
+            # save results
+            fname = os.path.join(
+                OUT_DIR, f"thresholds_contrast{i}_alpha{alpha}.npz"
+            )
+            np.savez_compressed(fname, **outputs[alpha])
 
     return outputs
 
 
 # -------------------- PARALLEL EXECUTION --------------------
-results = Parallel(n_jobs=n_jobs)(
-    delayed(compute_for_task)(i, t1, t2)
-    for i, (t1, t2) in enumerate(tasks)
-)
-
+global_timer = Timer()
+with global_timer.step(f"Running all {len(tasks)} tasks (n_jobs={n_jobs})"):
+    results = Parallel(n_jobs=n_jobs)(
+        delayed(compute_for_task)(i, t1, t2)
+        for i, (t1, t2) in enumerate(tasks)
+    )
 print("Finished.")

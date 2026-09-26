@@ -2,29 +2,28 @@
 and utilitary functions to use SansSouci on fMRI data (author = A.Blain)
 
 """
-import warnings
-import numpy as np
-from scipy.stats import norm
-from nilearn.maskers import NiftiMasker
-from nilearn.image import threshold_img
-from nilearn.image.resampling import coord_transform
-from nilearn._utils import check_niimg_3d
-from nilearn._utils.niimg import safe_get_data
-from nilearn.reporting.get_clusters_table import _local_max
-from nilearn.datasets import get_data_dirs
-from scipy import stats
-import sanssouci as sa
-import os
 import json
-import pandas as pd
-from tqdm import tqdm
-from string import ascii_lowercase
-from scipy import ndimage
+import os
 import sys
 import time
-import psutil
+import warnings
+from contextlib import contextmanager
+from string import ascii_lowercase
 
+import numpy as np
+import pandas as pd
+import psutil
+import sanssouci as sa
+from nilearn._utils import check_niimg_3d
+from nilearn._utils.niimg import safe_get_data
+from nilearn.datasets import get_data_dirs
+from nilearn.image import threshold_img
+from nilearn.image.resampling import coord_transform
+from nilearn.maskers import NiftiMasker
+from nilearn.reporting.get_clusters_table import _local_max
 from sanssouci.post_hoc_bounds import min_tdp
+from scipy import ndimage, stats
+from scipy.stats import norm
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -79,11 +78,11 @@ def get_processed_input(task1, task2, smoothing_fwhm=4, collection=1952):
     Get (task1 - task2) processed input for a pair of Neurovault contrasts
     """
 
-    # Localisation des données téléchargées
+    # Location of the downloaded data
     data_path = get_data_dirs()[0]
     data_location = os.path.join(data_path, f'neurovault/collection_{collection}')
 
-    # Liste des fichiers JSON de métadonnées
+    # List of metadata JSON files
     json_files = [
         os.path.join(data_location, f) for f in os.listdir(data_location)
         if f.endswith(".json") and 'collection_metadata' not in f
@@ -113,12 +112,12 @@ def get_processed_input(task1, task2, smoothing_fwhm=4, collection=1952):
     images_task1 = np.array(images_task1)
     images_task2 = np.array(images_task2)
 
-    # Identifier les sujets communs
+    # Identify common subjects
     common_subjects = sorted(set(subjects1) & set(subjects2))
     indices1 = [subjects1.index(s) for s in common_subjects]
     indices2 = [subjects2.index(s) for s in common_subjects]
 
-    # Appliquer le masque et le lissage
+    # Apply masking and smoothing
     nifti_masker = NiftiMasker(smoothing_fwhm=smoothing_fwhm)
     all_imgs = np.concatenate([images_task1[indices1], images_task2[indices2]])
     nifti_masker.fit(all_imgs)
@@ -536,15 +535,26 @@ def _compute_hommel_value(z_vals, alpha, verbose=False):
             plt.show(block=False)
     return np.minimum(hommel_value, n_samples)
 
-# monitoring time spent
+# monitoring time and memory spent per step
 class Timer:
     def __init__(self):
-        self._last = time.perf_counter()
         self._process = psutil.Process(os.getpid())
 
-    def log(self, msg):
-        now = time.perf_counter()
-        elapsed = now - self._last
-        mem_mb = self._process.memory_info().rss / (1024 ** 2)
-        print(f"[{elapsed:6.2f}s | {mem_mb:7.1f} Mo] {msg}")
-        self._last = now
+    def _mem_mb(self):
+        return self._process.memory_info().rss / (1024 ** 2)
+
+    @contextmanager
+    def step(self, msg):
+        """Wrap a block of code to log its start, its end and its duration.
+
+        Usage:
+            with t.step("doing something"):
+                ... code ...
+        """
+        print(f"[start |{self._mem_mb():7.1f} Mo] {msg}", flush=True)
+        t0 = time.perf_counter()
+        try:
+            yield
+        finally:
+            elapsed = time.perf_counter() - t0
+            print(f"[{elapsed:6.2f}s |{self._mem_mb():7.1f} Mo] {msg} -- done", flush=True)
