@@ -21,6 +21,9 @@ from tqdm import tqdm
 from string import ascii_lowercase
 from scipy import ndimage
 import sys
+import time
+import psutil
+
 from sanssouci.post_hoc_bounds import min_tdp
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -532,3 +535,16 @@ def _compute_hommel_value(z_vals, alpha, verbose=False):
             plt.plot([0, n_samples], [0, 0], 'k')
             plt.show(block=False)
     return np.minimum(hommel_value, n_samples)
+
+# monitoring time spent
+class Timer:
+    def __init__(self):
+        self._last = time.perf_counter()
+        self._process = psutil.Process(os.getpid())
+
+    def log(self, msg):
+        now = time.perf_counter()
+        elapsed = now - self._last
+        mem_mb = self._process.memory_info().rss / (1024 ** 2)
+        print(f"[{elapsed:6.2f}s | {mem_mb:7.1f} Mo] {msg}")
+        self._last = now

@@ -1,18 +1,20 @@
 import os
 import sys
-import pandas as pd
+
 import numpy as np
-from joblib import Parallel, delayed
-from tqdm import tqdm
+import pandas as pd
 import sanssouci as sa
-from utils import (
-    get_processed_input,
-    calibrate_shifted_simes,
-    get_data_driven_template_two_tasks,
-    _compute_hommel_value
-)
+from joblib import Parallel, delayed
 from scipy import stats
 from scipy.stats import norm
+from utils import (
+    Timer,
+    _compute_hommel_value,
+    calibrate_shifted_simes,
+    calibrate_simes,
+    get_data_driven_template_two_tasks,
+    get_processed_input,
+)
 
 # Paths setup
 script_path = os.path.dirname(__file__)
@@ -42,7 +44,8 @@ tasks = list(zip(test_task1s, test_task2s))
 
 # ------------------- CORE FUNCTION -------------------
 def compute_for_task(i, task1, task2):
-    print(f"[{i}] Loading fMRI input for {task1} vs {task2}")
+    t = Timer()
+    t.log(f"[{i}] Loading fMRI input for {task1} vs {task2}")
     fmri_input, _ = get_processed_input(task1, task2,
                                         smoothing_fwhm=4,
                                         collection=1952)
@@ -54,13 +57,13 @@ def compute_for_task(i, task1, task2):
     z_nonzero = z_vals[z_vals != 0]
 
     # ----- Permutations for pARI / Notip  -----
-    print(f"[{i}] Permutations (B={B_calib})")
+    t.log(f"[{i}] Permutations (B={B_calib})")
     pval0 = sa.get_permuted_p_values_one_sample(
         fmri_input, B=B_calib, n_jobs=n_jobs, seed=seed
     )
 
     # ----- Data-driven template  -----
-    print(f"[{i}] Training data-driven templates (Notip, B={B_train})")
+    t.log(f"[{i}] Training data-driven templates (Notip, B={B_train})")
     learned_templates = get_data_driven_template_two_tasks(
         task1, task2, B=B_train, seed=training_seed
     )
@@ -71,7 +74,7 @@ def compute_for_task(i, task1, task2):
     outputs = {}
 
     for alpha in ALPHAS:
-        print(f"[{i}] Computing thresholds for alpha={alpha}")
+        t.log(f"[{i}] Computing thresholds for alpha={alpha}")
 
         # --- Hommel & ARI ---
         hommel = _compute_hommel_value(z_nonzero, alpha)
@@ -84,9 +87,15 @@ def compute_for_task(i, task1, task2):
         )
 
         # --- Calibrated Simes ---
-        _, calibrated_simes_thr = calibrate_shifted_simes(fmri_input,
+        _, calibrated_simes_thr = calibrate_simes(fmri_input,
                 alpha, k_max=p, B=B_calib, n_jobs=n_jobs, seed=seed
 
+        )
+
+        # --- pARI with delta=0
+        _, pari0_thr = calibrate_shifted_simes(
+            fmri_input, alpha,
+            B=B_calib, n_jobs=n_jobs, seed=seed, k_min=0
         )
 
         # --- pARI with delta=1
@@ -105,20 +114,21 @@ def compute_for_task(i, task1, task2):
         )
 
         # store results
-        outputs[alpha] = dict(
-            ari_thr=ari_thr,
-            pari_thr=pari_thr,
-            notip_thr=notip_thr,
-            pari1_thr=pari1_thr,
-            pari0_thr=calibrated_simes_thr
-        )
+        outputs[alpha] = {
+            'ari_thr': ari_thr,
+            'pari_thr': pari_thr,
+            'notip_thr': notip_thr,
+            'pari1_thr': pari1_thr,
+            'pari0_thr': calibrated_simes_thr,
+            'pari0_thr2': pari1_thr
+        }
 
         # save results
         fname = os.path.join(
             OUT_DIR, f"thresholds_contrast{i}_alpha{alpha}.npz"
         )
         np.savez_compressed(fname, **outputs[alpha])
-        print(f"[{i}] Saved -> {fname}")
+        t.log(f"[{i}] Saved -> {fname}")
 
     return outputs
 
