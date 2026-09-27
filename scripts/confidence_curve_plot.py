@@ -1,17 +1,17 @@
-from joblib import Memory
-from nilearn.datasets import fetch_neurovault
-from nilearn._utils import check_niimg_3d
-from nilearn._utils.niimg import safe_get_data
-from scipy.stats import norm
-from scipy.stats import ttest_1samp
 import os
 import sys
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from matplotlib.ticker import FormatStrFormatter
-from utils import get_processed_input
 import sanssouci as sa
+from joblib import Memory
+from matplotlib.ticker import FormatStrFormatter
+from nilearn._utils import check_niimg_3d
+from nilearn._utils.niimg import safe_get_data
+from nilearn.datasets import fetch_neurovault
+from scipy.stats import norm, ttest_1samp
+from utils import get_processed_input
 
 # Set up paths and ensure figure directory exists
 script_path = os.path.dirname(__file__)
@@ -19,14 +19,10 @@ fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
 sys.path.append(os.path.abspath(os.path.join(script_path, '..')))
 
 # Parameters
-seed = 42
 ALPHAS = [0.05, 0.1]
 B = 10000
-n_train = 10000
 smoothing_fwhm = 4
-k_max = 1000
-delta = 27
-n_jobs = 1
+PLOT_ALL_PARI = False  # if False, only plot ARI, Notip and pARI (delta=27)
 
 
 # Download NeuroVault dataset
@@ -93,7 +89,7 @@ for alpha in ALPHAS:
         # Set up ticks for secondary axis
         z_max = int(np.floor(np.max(stat_map_)))
         z_ticks = list(np.arange(1, z_max + 1))  # + [3.5, 4.5]
-        z_ticks = sorted(set(z_ticks))  # éviter les doublons
+        z_ticks = sorted(set(z_ticks))  # avoid duplicates
         k_ticks = [np.sum(stat_map_ > z) for z in z_ticks]
         z_labels = [str(z) if (z % 2 == 1 or z in [2, 4]) else "" for z in z_ticks] # [2, 4, 3.5, 4.5]
 
@@ -102,8 +98,9 @@ for alpha in ALPHAS:
         ax.plot(np.arange(1, len(TDP_pARI1)+1), TDP_ARI, label='ARI', color='red', alpha=0.5)
         ax.plot(np.arange(1, len(TDP_pARI1)+1), TDP_Notip, label='Notip', color='green', alpha=0.5)
         ax.plot(np.arange(1, len(TDP_pARI1)+1), TDP_pARI, label=r'pARI ($\delta=27$)', color='blue', alpha=0.5)
-        ax.plot(np.arange(1, len(TDP_pARI1)+1), TDP_pARI1, label=r'pARI ($\delta=1$)', color='pink')
-        ax.plot(np.arange(1, len(TDP_pARI1)+1), TDP_calibrated_simes, label=r'pARI ($\delta=0$)', color='orange')
+        if PLOT_ALL_PARI:
+            ax.plot(np.arange(1, len(TDP_pARI1)+1), TDP_pARI1, label=r'pARI ($\delta=1$)', color='pink')
+            ax.plot(np.arange(1, len(TDP_pARI1)+1), TDP_calibrated_simes, label=r'pARI ($\delta=0$)', color='orange')
 
         for (z, count), thresh in zip(sorted(voxel_counts.items()), np.linspace(0.3, 0.9, len(voxel_counts))):
             ax.axvline(x=count, color='purple', linestyle='--', alpha=thresh)
@@ -124,5 +121,6 @@ for alpha in ALPHAS:
         secax.set_xlim(ax.get_xlim())
 
         plt.tight_layout()
-        plt.savefig(f'results/contrast{i}/confidence_curve_TDP_{alpha}_full.pdf')
+        suffix = "_all-curves" if PLOT_ALL_PARI else ""
+        plt.savefig(f'results/contrast{i}/confidence_curve_TDP_{alpha}{suffix}.pdf')
         print(f"Plot completed for task {i}")
