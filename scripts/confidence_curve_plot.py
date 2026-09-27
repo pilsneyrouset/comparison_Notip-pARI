@@ -17,15 +17,16 @@ fig_path_ = os.path.abspath(os.path.join(repo_path, 'figures'))
 
 # Parameters
 ALPHAS = [0.05, 0.1]
-B_calib = 100
-B_train = 100
-PLOT_ALL_PARI = False  # if False, only plot ARI, Notip and pARI (delta=27)
+B_calib = 1000
+B_train = 1000
+PLOT_ALL_PARI = True  # if False, only plot ARI, Notip and pARI (delta=27)
 
 # Load dataset task list
 df_tasks = pd.read_csv(os.path.join(script_path, 'contrast_list2.csv'))
 test_task1s, test_task2s = df_tasks['task1'], df_tasks['task2']
 
 for alpha in ALPHAS:
+    print(f"alpha={alpha}")
     for i in range(len(test_task1s)):
         task1 = test_task1s[i]
         task2 = test_task2s[i]
@@ -113,3 +114,5 @@ for alpha in ALPHAS:
         plt.savefig(fig_pathname, bbox_inches='tight')
         plt.close()
         print(f"Plot completed for task {i}")
+    print(f"alpha={alpha} -- done")
+

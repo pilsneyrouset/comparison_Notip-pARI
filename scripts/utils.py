@@ -57,7 +57,7 @@ def get_data_driven_template_two_tasks(
     pval0_quantiles : matrix of shape (B, p)
         Learned template (= sorted quantile curves)
     """
-    fmri_input, nifti_masker = get_processed_input(task1, task2, smoothing_fwhm=smoothing_fwhm, collection=collection)
+    fmri_input, _ = get_processed_input(task1, task2, smoothing_fwhm=smoothing_fwhm, collection=collection)
     if cap_subjects:
         # Let's compute the permuted p-values
         pval0 = sa.get_permuted_p_values_one_sample(fmri_input[:10, :],
@@ -153,7 +153,7 @@ def get_stat_img(task1, task2, smoothing_fwhm=4, collection=1952):
     """
     fmri_input, nifti_masker = get_processed_input(
         task1, task2, smoothing_fwhm=smoothing_fwhm, collection=collection)
-    stats_, p_values = stats.ttest_1samp(fmri_input, 0)
+    _, p_values = stats.ttest_1samp(fmri_input, 0)
     z_vals = norm.isf(p_values)
     z_vals_ = nifti_masker.inverse_transform(z_vals)
 
@@ -280,29 +280,21 @@ def ari_inference(p_values, tdp, alpha, nifti_masker):
     return z_unmasked, region_size_ARI
 
 
-def get_clusters_table_with_TDP_task(stat_img, task_id, stat_threshold=3,
-                                alpha=0.05,
+def get_clusters_table_with_TDP_task(stat_img, thr, stat_threshold=3,
                                 cluster_threshold=None,
-                                methods=['Notip'],
+                                methods=None,
                                 two_sided=False, min_distance=8.):
     """Creates pandas dataframe with img cluster statistics.
     Parameters
     ----------
     stat_img : Niimg-like object,
        Statistical image (presumably in z- or p-scale).
+    thr : mapping (e.g. the object returned by np.load on a thresholds .npz)
+        Must provide 'ari_thr', 'pari_thr', 'notip_thr' and 'pari1_thr',
+        as produced by compute_thresholds.py for a given task/alpha.
     stat_threshold : `float`
         Cluster forming threshold in same scale as `stat_img` (either a
         p-value or z-scale value).
-    fmri_input : array of shape (n_subjects, p)
-        Masked fMRI data
-    learned_templates : array of shape (B_train, p)
-        sorted quantile curves computed on training data
-    alpha : float
-        risk level
-    k_max : int
-        threshold families length
-    B : int
-        number of permutations at inference step
     cluster_threshold : `int` or `None`, optional
         Cluster size threshold, in voxels.
     two_sided : `bool`, optional
@@ -320,43 +312,16 @@ def get_clusters_table_with_TDP_task(stat_img, task_id, stat_threshold=3,
         rather than any peaks/subpeaks.
     """
     # Replace None with 0
+    if methods is None:
+        methods = ['Notip']
     cluster_threshold = 0 if cluster_threshold is None else cluster_threshold
-    # print(cluster_threshold)
     # check that stat_img is niimg-like object and 3D
     stat_img = check_niimg_3d(stat_img)
 
-    stat_map_ = safe_get_data(stat_img)
-    
-    threshold_dir = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '..', 'results', 'thresholds')
-    )
-
-    threshold_path = os.path.join(
-        threshold_dir,
-        f"thresholds_contrast{task_id}_alpha{alpha}.npz"
-    )
-
-    if not os.path.exists(threshold_path):
-        raise FileNotFoundError(f"[ERROR] Threshold file not found:\n{threshold_path}")
-
-    # Load thresholds
-    thr = np.load(threshold_path)
     ari_thr = thr["ari_thr"]
-    simes_thr = thr["simes_thr"]
     pari_thr = thr["pari_thr"]
     notip_thr = thr["notip_thr"]
-
-    threshold_path1 = os.path.join(
-        threshold_dir,
-        f"thresholds_contrast{task_id}_alpha{alpha}_delta1.npz"
-    )
-
-    if not os.path.exists(threshold_path1):
-        raise FileNotFoundError(f"[ERROR] Threshold file not found:\n{threshold_path1}")
-
-    thr1 = np.load(threshold_path1)
-
-    pari1_thr = thr1["pari_thr"]
+    pari1_thr = thr["pari1_thr"]
 
     # Apply threshold(s) to image
     stat_img = threshold_img(
@@ -393,7 +358,7 @@ def get_clusters_table_with_TDP_task(stat_img, task_id, stat_threshold=3,
         # If the stat threshold is too high simply return an empty dataframe
         if np.sum(binarized) == 0:
             warnings.warn(
-                'Attention: No clusters with stat {0} than {1}'.format(
+                'Attention: No clusters with stat {} than {}'.format(
                     'higher' if sign == 1 else 'lower',
                     stat_threshold * sign,
                 )
@@ -402,7 +367,7 @@ def get_clusters_table_with_TDP_task(stat_img, task_id, stat_threshold=3,
 
         # Now re-label and create table
         label_map = ndimage.measurements.label(binarized, conn_mat)[0]
-        clust_ids = sorted(list(np.unique(label_map)[1:]))
+        clust_ids = sorted(np.unique(label_map)[1:])
         peak_vals = np.array(
             [np.max(temp_stat_map * (label_map == c)) for c in clust_ids])
         # Sort by descending max value
@@ -452,13 +417,13 @@ def get_clusters_table_with_TDP_task(stat_img, task_id, stat_threshold=3,
                             subpeak_xyz[subpeak, 0],
                             subpeak_xyz[subpeak, 1],
                             subpeak_xyz[subpeak, 2],
-                            "{0:.2f}".format(subpeak_vals[subpeak]),
+                            f"{subpeak_vals[subpeak]:.2f}",
                             cluster_size_mm,
-                            int(round(voxel_number)),
-                            "{0:.2f}".format(ari_tdp),
-                            "{0:.2f}".format(notip_tdp),
-                            "{0:.2f}".format(pari_tdp),
-                            "{0:.2f}".format(pari1_tdp)]
+                            round(voxel_number),
+                            f"{ari_tdp:.2f}",
+                            f"{notip_tdp:.2f}",
+                            f"{pari_tdp:.2f}",
+                            f"{pari1_tdp:.2f}"]
                     else:
                         cols = ['Cluster ID', 'X', 'Y', 'Z', 'Peak Stat', 'Cluster Size (mm3)',
                                 'Number of Voxels', 'TDP (Notip)']
@@ -467,24 +432,21 @@ def get_clusters_table_with_TDP_task(stat_img, task_id, stat_threshold=3,
                             subpeak_xyz[subpeak, 0],
                             subpeak_xyz[subpeak, 1],
                             subpeak_xyz[subpeak, 2],
-                            "{0:.2f}".format(subpeak_vals[subpeak]),
+                            f"{subpeak_vals[subpeak]:.2f}",
                             cluster_size_mm,
-                            int(round(voxel_number)),
-                            "{0:.2f}".format(notip_tdp)]                           
+                            round(voxel_number),
+                            f"{notip_tdp:.2f}"]                           
                                     
                 else:
                     # Subpeak naming convention is cluster num+letter:
                     # 1a, 1b, etc
-                    sp_id = '{0}{1}'.format(
-                        c_id + 1,
-                        ascii_lowercase[subpeak - 1],
-                    )
+                    sp_id = f'{c_id + 1}{ascii_lowercase[subpeak - 1]}'
                     row = [
                         sp_id,
                         subpeak_xyz[subpeak, 0],
                         subpeak_xyz[subpeak, 1],
                         subpeak_xyz[subpeak, 2],
-                        "{0:.2f}".format(subpeak_vals[subpeak]),
+                        f"{subpeak_vals[subpeak]:.2f}",
                         '',
                         '']
                     

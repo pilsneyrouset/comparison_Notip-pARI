@@ -51,7 +51,7 @@ def compute_for_task(i, task1, task2):
 
     # ----- Compute Z-values (common to all alphas) -----
     with t.step(f"[{i}] Computing test statistics"):
-        stats_, p_values = stats.ttest_1samp(fmri_input, 0)
+        _, p_values = stats.ttest_1samp(fmri_input, 0)
         z_vals = norm.isf(p_values)
         z_nonzero = z_vals[z_vals != 0]
 

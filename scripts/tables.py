@@ -1,61 +1,64 @@
-import matplotlib.pyplot as plt
+import os
+
+import nibabel as nib
 import numpy as np
 import pandas as pd
-import sys
-from joblib import Memory
-from scipy import stats
-from scipy.stats import norm
-import os
-from utils import get_clusters_table_with_TDP_task, get_processed_input
-from nilearn.datasets import fetch_neurovault
-from tqdm import tqdm
+from joblib import Parallel, delayed
+from utils import get_clusters_table_with_TDP_task
 
 # Paths setup
 script_path = os.path.dirname(__file__)
-fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
-sys.path.append(os.path.abspath(os.path.join(script_path, '..')))
+repo_path = os.path.abspath(os.path.join(script_path, '..'))
 
-# Fetch NeuroVault dataset
-fetch_neurovault(max_images=np.inf, mode='download_new', collection_id=1952)
-
-# Cache location
-location = './cachedir'
-memory = Memory(location, mmap_mode='r', verbose=0)
+results_path_ = os.path.join(repo_path, 'results')
+tables_path_ = os.path.join(repo_path, 'tables')
 
 # Parameters
-smoothing_fwhm = 4
-seed = 42
 z_thresholds = [3, 3.5, 4, 4.5, 5, 5.5]
-n_perm = 1000
+alpha = 0.05     # must match one of the ALPHAS used in compute_thresholds.py
+B_calib = 1000  # must match B_calib used in compute_thresholds.py
+B_train = 1000  # must match B_train used in compute_thresholds.py
+n_jobs = 5
 
 # Load dataset contrasts
 df_tasks = pd.read_csv(os.path.join(script_path, 'contrast_list2.csv'))
 test_task1s, test_task2s = df_tasks['task1'], df_tasks['task2']
 
-# Loop over tasks with progress bar
-for i in tqdm(range(len(test_task1s)), desc="Processing tasks"):
-    task1 = test_task1s[i]
-    task2 = test_task2s[i]
+def process_task(i, task1, task2):
+    out_dir = os.path.join(tables_path_, f'contrast{i}')
+    os.makedirs(out_dir, exist_ok=True)
 
-    path = f'results/contrast{i}'
-    os.makedirs(path, exist_ok=True)
+    # Load the z-map, computed once during the fit step (compute_thresholds.py)
+    # instead of redoing the fMRI preprocessing
+    zmap_path = os.path.join(results_path_, f"zmap_contrast{i}.nii.gz")
+    if not os.path.exists(zmap_path):
+        raise FileNotFoundError(f"[ERROR] z-map file not found:\n{zmap_path}")
+    z_map = nib.load(zmap_path)
 
-    # Preprocess fMRI input
-    fmri_input, nifti_masker = get_processed_input(task1, task2, smoothing_fwhm=smoothing_fwhm)
+    # Load the thresholds once per task (reused for every z below, instead
+    # of being reloaded from disk at each iteration)
+    threshold_path = os.path.join(
+        results_path_,
+        f"thresholds_contrast{i}_alpha{alpha}_Bcalib{B_calib}_Btrain{B_train}.npz"
+    )
+    if not os.path.exists(threshold_path):
+        raise FileNotFoundError(f"[ERROR] Threshold file not found:\n{threshold_path}")
+    thr = np.load(threshold_path)
 
-    # One-sample t-test and compute z-map
-    stats_, p_values = stats.ttest_1samp(fmri_input, 0)
-    z_vals = norm.isf(p_values)
-    z_map = nifti_masker.inverse_transform(z_vals)
-
-    # Loop over z-thresholds with progress bar
-    for z in tqdm(z_thresholds, desc=f"Task {i} z-thresholds", leave=False):
+    for z in z_thresholds:
         df = get_clusters_table_with_TDP_task(
             z_map,
-            task_id=i,
+            thr=thr,
             stat_threshold=z,
             methods=['ARI', 'Notip', 'pARI', 'pARI1']
         )
-        output_file = os.path.join(path, f'z_threshold_{z}.csv')
-
+        output_file = os.path.join(out_dir, f'z_threshold_{z}.csv')
         df.to_csv(output_file, index=False)
+
+
+Parallel(n_jobs=n_jobs, verbose=10)(
+    delayed(process_task)(i, t1, t2)
+    for i, (t1, t2) in enumerate(zip(test_task1s, test_task2s))
+)
+
+print("Finished.")

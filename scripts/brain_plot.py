@@ -1,62 +1,41 @@
-import numpy as np
-from scipy import stats
-from scipy.stats import norm
-from nilearn import plotting
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-import pandas as pd
-from scipy import ndimage
-import sys
-import nibabel as nib
-from joblib import Memory
 import os
-from nilearn import image
-from nilearn.datasets import fetch_neurovault
-from utils import get_processed_input
+
+import matplotlib.pyplot as plt
+import nibabel as nib
+import numpy as np
+import pandas as pd
+from matplotlib import patches
+from nilearn import image, plotting
+from scipy import ndimage
 
 # Paths setup
 script_path = os.path.dirname(__file__)
-fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
-sys.path.append(os.path.abspath(os.path.join(script_path, '..')))
+repo_path = os.path.abspath(os.path.join(script_path, '..'))
+tables_path_ = os.path.join(repo_path, 'tables')
+results_path_ = os.path.join(repo_path, 'results')
+fig_path_ = os.path.join(repo_path, 'figures')
 
 # Parameters
-seed = 42
-alpha = 0.1
-B = 10000
-n_train = 10000
-smoothing_fwhm = 4
-k_max = 1000
-delta = 27
-n_jobs = 20
-
-# Fetch NeuroVault dataset
-fetch_neurovault(max_images=np.inf, mode='download_new', collection_id=1952)
-sys.path.append(script_path)
-location = './cachedir'
-memory = Memory(location, mmap_mode='r', verbose=0)
+id_task = 36
 
 # Load task contrasts from dataset
 df_tasks = pd.read_csv(os.path.join(script_path, 'contrast_list2.csv'))
 test_task1s, test_task2s = df_tasks['task1'], df_tasks['task2']
-id_task = 36
 
 task1 = test_task1s[id_task]
 task2 = test_task2s[id_task]
-print("task1:",task1)
+print("task1:", task1)
 print("task2:", task2)
 
-# Preprocess fMRI input
-fmri_input, nifti_masker = get_processed_input(
-    task1, task2, smoothing_fwhm=smoothing_fwhm)
-
-# One-sample t-test
-stats_, p_values = stats.ttest_1samp(fmri_input, 0)
-z_vals = norm.isf(p_values)
-z_map = nifti_masker.inverse_transform(z_vals)
-
+# Load the z-map, computed once during the fit step (compute_thresholds.py)
+# instead of redoing the fMRI preprocessing
+zmap_path = os.path.join(results_path_, f"zmap_contrast{id_task}.nii.gz")
+if not os.path.exists(zmap_path):
+    raise FileNotFoundError(f"[ERROR] z-map file not found:\n{zmap_path}")
+z_map = nib.load(zmap_path)
 
 # === Clusters ===
-df = pd.read_csv(f"results/contrast{id_task}/z_threshold_3.5.csv")
+df = pd.read_csv(os.path.join(tables_path_, f"contrast{id_task}", "z_threshold_3.5.csv"))
 
 # keep only main clusters (numeric IDs)
 df_main = df[df["Cluster ID"].astype(str).str.fullmatch(r"\d+")].copy()
@@ -111,11 +90,11 @@ labeled_data, n_labels = ndimage.label(binary_data)
 mask_data = np.zeros_like(binary_data)
 affine_inv = np.linalg.inv(z_map.affine)
 
-for idx, cl in clusters.items():
+for cl in clusters.values():
     x, y, z = cl['coord']
     # Transform MNI coordinates -> voxel indices
     i, j, k = nib.affines.apply_affine(affine_inv, [x, y, z])
-    i, j, k = int(round(i)), int(round(j)), int(round(k))
+    i, j, k = round(i), round(j), round(k)
     
     if (0 <= i < labeled_data.shape[0] and 
         0 <= j < labeled_data.shape[1] and 
@@ -132,6 +111,21 @@ masked_z_map = image.math_img("img * mask", img=z_map, mask=mask_img)
 # Add cluster labels to plots
 def annotate_clusters(display, clusters, target_y):
     transparent_labels = [11, 12, 13, 15]
+
+    # target_y was hand-picked for a specific set of clusters, so a 
+    # mismatch indicates that the result table has changed (e.g. 
+    # a different B producing more clusters with non trivial signal)
+    missing = sorted(set(clusters) - set(target_y))
+    if missing:
+        raise KeyError(
+            f"No manual target_y position for cluster label(s) {missing}. "
+            f"target_y was tuned by hand for a specific clustering result; "
+            f"getting a different set of cluster labels usually means the "
+            f"upstream thresholds/clusters changed (different B?)"
+            f"Check results/contrast{{id}}/z_threshold_{{threshold}}.csv before "
+            f"adding an entry to target_y for this label."
+        )
+
     for label, cl in clusters.items():
         x, y, z = cl['coord']
         view = cl['view']
@@ -208,4 +202,7 @@ cbar_ax.add_patch(rect)
 
 annotate_clusters(display, clusters, target_y)
 enlarge_colorbar(display, fig)
-plt.savefig(f"results/contrast{id_task}/brain_plot.pdf", bbox_inches='tight')
+
+out_dir = os.path.join(fig_path_, f"contrast{id_task}")
+os.makedirs(out_dir, exist_ok=True)
+plt.savefig(os.path.join(out_dir, "brain_plot.pdf"), bbox_inches='tight')
