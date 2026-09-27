@@ -20,12 +20,12 @@ sys.path.append(os.path.abspath(os.path.join(script_path, '..')))
 
 
 # -------------------- PARAMETERS --------------------
-OUT_DIR = "results/thresholds"
+OUT_DIR = "results"
 os.makedirs(OUT_DIR, exist_ok=True)
 
 ALPHAS = [0.1, 0.05]
-B_train = 10000        
-B_calib = 10000        
+B_train = 100        
+B_calib = 100        
 n_jobs = 5
 seed = 42
 training_seed = 23
@@ -54,6 +54,11 @@ def compute_for_task(i, task1, task2):
         stats_, p_values = stats.ttest_1samp(fmri_input, 0)
         z_vals = norm.isf(p_values)
         z_nonzero = z_vals[z_vals != 0]
+
+    # save z_vals/p_values so the plotting script doesn't need to redo the
+    # fMRI preprocessing (get_processed_input) just to read them
+    zvals_fname = os.path.join(OUT_DIR, f"stats_contrast{i}.npz")
+    np.savez_compressed(zvals_fname, z_vals=z_vals, p_values=p_values)
 
     # ----- Permutations for pARI / Notip  -----
     with t.step(f"[{i}] Permutations (B={B_calib})"):
@@ -125,7 +130,8 @@ def compute_for_task(i, task1, task2):
 
             # save results
             fname = os.path.join(
-                OUT_DIR, f"thresholds_contrast{i}_alpha{alpha}_B{B}_B_train{B}.npz"
+                OUT_DIR,
+                f"thresholds_contrast{i}_alpha{alpha}_Bcalib{B_calib}_Btrain{B_train}.npz"
             )
             np.savez_compressed(fname, **outputs[alpha])
     return outputs
@@ -133,4 +139,10 @@ def compute_for_task(i, task1, task2):
 
 # -------------------- PARALLEL EXECUTION --------------------
 global_timer = Timer()
+with global_timer.step(f"Running all {len(tasks)} tasks (n_jobs={n_jobs})"):
+    results = Parallel(n_jobs=n_jobs)(
+        delayed(compute_for_task)(i, t1, t2)
+        for i, (t1, t2) in enumerate(tasks)
+    )
+
 print("Finished.")

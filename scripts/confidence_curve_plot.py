@@ -5,33 +5,21 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import sanssouci as sa
-from joblib import Memory
 from matplotlib.ticker import FormatStrFormatter
-from nilearn._utils import check_niimg_3d
-from nilearn._utils.niimg import safe_get_data
-from nilearn.datasets import fetch_neurovault
-from scipy.stats import norm, ttest_1samp
-from utils import get_processed_input
 
 # Set up paths and ensure figure directory exists
 script_path = os.path.dirname(__file__)
 repo_path = os.path.abspath(os.path.join(script_path, '..'))
 sys.path.append(repo_path)
 
-threshold_path_ = os.path.abspath(os.path.join(repo_path, 'results', 'thresholds'))
+results_path_ = os.path.abspath(os.path.join(repo_path, 'results'))
 fig_path_ = os.path.abspath(os.path.join(repo_path, 'figures'))
 
 # Parameters
 ALPHAS = [0.05, 0.1]
-B = 10000
-smoothing_fwhm = 4
+B_calib = 100
+B_train = 100
 PLOT_ALL_PARI = False  # if False, only plot ARI, Notip and pARI (delta=27)
-
-
-# Download NeuroVault dataset
-fetch_neurovault(max_images=np.inf, mode='download_new', collection_id=1952)
-location = './cachedir'
-memory = Memory(location, mmap_mode='r', verbose=0)
 
 # Load dataset task list
 df_tasks = pd.read_csv(os.path.join(script_path, 'contrast_list2.csv'))
@@ -42,26 +30,23 @@ for alpha in ALPHAS:
         task1 = test_task1s[i]
         task2 = test_task2s[i]
 
-        # Preprocess fMRI data
-        fmri_input, nifti_masker = get_processed_input(task1, task2, smoothing_fwhm=smoothing_fwhm)
-        stats_, p_values = ttest_1samp(fmri_input, 0)
-        z_vals = norm.isf(p_values)
-        z_map = nifti_masker.inverse_transform(z_vals)
+        # Load z_vals / p_values (instead of redoing the fMRI preprocessing)
+        stats_path = os.path.join(results_path_, f"stats_contrast{i}.npz")
+        if not os.path.exists(stats_path):
+            raise FileNotFoundError(f"[ERROR] z-values file not found:\n{stats_path}")
+        zvals_data = np.load(stats_path)
+        z_vals = zvals_data["z_vals"]
+        p_values = zvals_data["p_values"]
 
-        # Ensure 3D image and extract data
-        stat_img = check_niimg_3d(z_map)
-        stat_map_ = safe_get_data(stat_img)
-
-        # Count voxels above thresholds
+        # Count voxels above thresholds. This is equivalent to counting on
+        # the reconstructed 3D map since all thresholds here are positive
+        # and background (out-of-mask) voxels are 0.
         z_thresholds = [3, 3.5, 4, 4.5]
-        voxel_counts = {}
-        for z in z_thresholds:
-            count = np.sum(stat_map_ > z)
-            voxel_counts[z] = count
+        voxel_counts = {z: np.sum(z_vals > z) for z in z_thresholds}
 
         threshold_path = os.path.join(
-            threshold_path_,
-            f"thresholds_contrast{i}_alpha{alpha}.npz"
+            results_path_,
+            f"thresholds_contrast{i}_alpha{alpha}_Bcalib{B_calib}_Btrain{B_train}.npz"
         )
         if not os.path.exists(threshold_path):
             raise FileNotFoundError(f"[ERROR] Threshold file not found:\n{threshold_path}")
@@ -84,10 +69,10 @@ for alpha in ALPHAS:
             TDP_calibrated_simes = sa.curve_min_tdp(p_values, thr["pari0_thr"])
 
         # Set up ticks for secondary axis
-        z_max = int(np.floor(np.max(stat_map_)))
+        z_max = int(np.floor(np.max(z_vals)))
         z_ticks = list(np.arange(1, z_max + 1))  # + [3.5, 4.5]
         z_ticks = sorted(set(z_ticks))  # avoid duplicates
-        k_ticks = [np.sum(stat_map_ > z) for z in z_ticks]
+        k_ticks = [np.sum(z_vals > z) for z in z_ticks]
         z_labels = [str(z) if (z % 2 == 1 or z in [2, 4]) else "" for z in z_ticks] # [2, 4, 3.5, 4.5]
 
         # --- Plot TDP Curve ---
@@ -97,7 +82,7 @@ for alpha in ALPHAS:
         ax.plot(np.arange(1, len(TDP_pARI)+1), TDP_pARI, label=r'pARI ($\delta=27$)', color='blue', alpha=0.5)
         if PLOT_ALL_PARI:
             ax.plot(np.arange(1, len(TDP_pARI1)+1), TDP_pARI1, label=r'pARI ($\delta=1$)', color='pink')
-            ax.plot(np.arange(1, len(TDP_pARI0)+1), TDP_calibrated_simes, label=r'pARI ($\delta=0$)', color='orange')
+            ax.plot(np.arange(1, len(TDP_calibrated_simes)+1), TDP_calibrated_simes, label=r'pARI ($\delta=0$)', color='orange')
 
         for (z, count), thresh in zip(sorted(voxel_counts.items()), np.linspace(0.3, 0.9, len(voxel_counts))):
             ax.axvline(x=count, color='purple', linestyle='--', alpha=thresh)
