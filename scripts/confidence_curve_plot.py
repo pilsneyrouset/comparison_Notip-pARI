@@ -15,8 +15,11 @@ from utils import get_processed_input
 
 # Set up paths and ensure figure directory exists
 script_path = os.path.dirname(__file__)
-fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
-sys.path.append(os.path.abspath(os.path.join(script_path, '..')))
+repo_path = os.path.abspath(os.path.join(script_path, '..'))
+sys.path.append(repo_path)
+
+threshold_path_ = os.path.abspath(os.path.join(repo_path, 'results', 'thresholds'))
+fig_path_ = os.path.abspath(os.path.join(repo_path, 'figures'))
 
 # Parameters
 ALPHAS = [0.05, 0.1]
@@ -56,35 +59,29 @@ for alpha in ALPHAS:
             count = np.sum(stat_map_ > z)
             voxel_counts[z] = count
 
-        threshold_dir = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), '..', 'results', 'thresholds')
-        )
-
         threshold_path = os.path.join(
-            threshold_dir,
+            threshold_path_,
             f"thresholds_contrast{i}_alpha{alpha}.npz"
         )
-
         if not os.path.exists(threshold_path):
             raise FileNotFoundError(f"[ERROR] Threshold file not found:\n{threshold_path}")
+        
+        fig_path = os.path.join(
+            fig_path_,
+            f'contrast{i}'
+        )
+        os.makedirs(fig_path, exist_ok=True)
 
         # Load thresholds
         thr = np.load(threshold_path)
 
-        ari_thr = thr["ari_thr"]
-        TDP_ARI = sa.curve_min_tdp(p_values, ari_thr)
+        TDP_ARI = sa.curve_min_tdp(p_values, thr["ari_thr"])
+        TDP_pARI = sa.curve_min_tdp(p_values, thr["pari_thr"])
+        TDP_Notip = sa.curve_min_tdp(p_values, thr["notip_thr"])
 
-        pari_thr = thr["pari_thr"]
-        TDP_pARI = sa.curve_min_tdp(p_values, pari_thr)
-
-        notip_thr = thr["notip_thr"]
-        TDP_Notip = sa.curve_min_tdp(p_values, notip_thr)
-
-        pari1_thr = thr["pari1_thr"]
-        TDP_pARI1 = sa.curve_min_tdp(p_values, pari1_thr)
-
-        calibrated_simes_thr = thr["pari0_thr"]
-        TDP_calibrated_simes = sa.curve_min_tdp(p_values, calibrated_simes_thr)
+        if PLOT_ALL_PARI:
+            TDP_pARI1 = sa.curve_min_tdp(p_values, thr["pari1_thr"])
+            TDP_calibrated_simes = sa.curve_min_tdp(p_values, thr["pari0_thr"])
 
         # Set up ticks for secondary axis
         z_max = int(np.floor(np.max(stat_map_)))
@@ -95,12 +92,12 @@ for alpha in ALPHAS:
 
         # --- Plot TDP Curve ---
         fig, ax = plt.subplots()
-        ax.plot(np.arange(1, len(TDP_pARI1)+1), TDP_ARI, label='ARI', color='red', alpha=0.5)
-        ax.plot(np.arange(1, len(TDP_pARI1)+1), TDP_Notip, label='Notip', color='green', alpha=0.5)
-        ax.plot(np.arange(1, len(TDP_pARI1)+1), TDP_pARI, label=r'pARI ($\delta=27$)', color='blue', alpha=0.5)
+        ax.plot(np.arange(1, len(TDP_ARI)+1), TDP_ARI, label='ARI', color='red', alpha=0.5)
+        ax.plot(np.arange(1, len(TDP_Notip)+1), TDP_Notip, label='Notip', color='green', alpha=0.5)
+        ax.plot(np.arange(1, len(TDP_pARI)+1), TDP_pARI, label=r'pARI ($\delta=27$)', color='blue', alpha=0.5)
         if PLOT_ALL_PARI:
             ax.plot(np.arange(1, len(TDP_pARI1)+1), TDP_pARI1, label=r'pARI ($\delta=1$)', color='pink')
-            ax.plot(np.arange(1, len(TDP_pARI1)+1), TDP_calibrated_simes, label=r'pARI ($\delta=0$)', color='orange')
+            ax.plot(np.arange(1, len(TDP_pARI0)+1), TDP_calibrated_simes, label=r'pARI ($\delta=0$)', color='orange')
 
         for (z, count), thresh in zip(sorted(voxel_counts.items()), np.linspace(0.3, 0.9, len(voxel_counts))):
             ax.axvline(x=count, color='purple', linestyle='--', alpha=thresh)
@@ -119,8 +116,15 @@ for alpha in ALPHAS:
         secax.set_xlabel("z-value")
         secax.tick_params(top=True, bottom=False, labeltop=True, labelbottom=False, length=5, which='both')
         secax.set_xlim(ax.get_xlim())
-
+        # add contrast names? too crowded
+        # plt.suptitle(f"{task1} vs {task2}", y=1, fontsize=12)
+        
         plt.tight_layout()
         suffix = "_all-curves" if PLOT_ALL_PARI else ""
-        plt.savefig(f'results/contrast{i}/confidence_curve_TDP_{alpha}{suffix}.pdf')
+        fig_pathname = os.path.join(
+            fig_path,
+            f'confidence_curve_TDP_{alpha}{suffix}.pdf'
+        )
+        plt.savefig(fig_pathname, bbox_inches='tight')
+        plt.close()
         print(f"Plot completed for task {i}")

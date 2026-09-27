@@ -16,7 +16,6 @@ from utils import (
 
 # Paths setup
 script_path = os.path.dirname(__file__)
-fig_path_ = os.path.abspath(os.path.join(script_path, os.pardir))
 sys.path.append(os.path.abspath(os.path.join(script_path, '..')))
 
 
@@ -51,9 +50,10 @@ def compute_for_task(i, task1, task2):
     p = fmri_input.shape[1]
 
     # ----- Compute Z-values (common to all alphas) -----
-    stats_, p_values = stats.ttest_1samp(fmri_input, 0)
-    z_vals = norm.isf(p_values)
-    z_nonzero = z_vals[z_vals != 0]
+    with t.step(f"[{i}] Computing test statistics"):
+        stats_, p_values = stats.ttest_1samp(fmri_input, 0)
+        z_vals = norm.isf(p_values)
+        z_nonzero = z_vals[z_vals != 0]
 
     # ----- Permutations for pARI / Notip  -----
     with t.step(f"[{i}] Permutations (B={B_calib})"):
@@ -125,18 +125,12 @@ def compute_for_task(i, task1, task2):
 
             # save results
             fname = os.path.join(
-                OUT_DIR, f"thresholds_contrast{i}_alpha{alpha}.npz"
+                OUT_DIR, f"thresholds_contrast{i}_alpha{alpha}_B{B}_B_train{B}.npz"
             )
             np.savez_compressed(fname, **outputs[alpha])
-
     return outputs
 
 
 # -------------------- PARALLEL EXECUTION --------------------
 global_timer = Timer()
-with global_timer.step(f"Running all {len(tasks)} tasks (n_jobs={n_jobs})"):
-    results = Parallel(n_jobs=n_jobs)(
-        delayed(compute_for_task)(i, t1, t2)
-        for i, (t1, t2) in enumerate(tasks)
-    )
 print("Finished.")
