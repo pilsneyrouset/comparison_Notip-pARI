@@ -44,7 +44,7 @@ def compute_for_task(i, task1, task2):
     t = Timer()
 
     with t.step(f"[{i}] Loading fMRI input for {task1} vs {task2}"):
-        fmri_input, _ = get_processed_input(task1, task2,
+        fmri_input, nifti_masker = get_processed_input(task1, task2,
                                             smoothing_fwhm=4,
                                             collection=1952)
     p = fmri_input.shape[1]
@@ -55,10 +55,13 @@ def compute_for_task(i, task1, task2):
         z_vals = norm.isf(p_values)
         z_nonzero = z_vals[z_vals != 0]
 
-    # save z_vals/p_values so the plotting script doesn't need to redo the
-    # fMRI preprocessing (get_processed_input) just to read them
+    # save z_vals/p_values and reconstructed 3D z-map, so that plotting 
+    # scripts that require this info can use it instead of recalculating
     zvals_fname = os.path.join(OUT_DIR, f"stats_contrast{i}.npz")
     np.savez_compressed(zvals_fname, z_vals=z_vals, p_values=p_values)
+
+    zmap_fname = os.path.join(OUT_DIR, f"zmap_contrast{i}.nii.gz")
+    nifti_masker.inverse_transform(z_vals).to_filename(zmap_fname)
 
     # ----- Permutations for pARI / Notip  -----
     with t.step(f"[{i}] Permutations (B={B_calib})"):
