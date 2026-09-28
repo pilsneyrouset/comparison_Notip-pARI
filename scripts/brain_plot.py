@@ -204,4 +204,4 @@ cbar_ax.add_patch(rect)
 annotate_clusters(display, clusters, target_y)
 enlarge_colorbar(display, fig)
 
-plt.savefig(os.path.join(fig_path_, "Figure-1_brain-plot.pdf"), bbox_inches='tight')
+plt.savefig(os.path.join(fig_path_, "brain-plot.pdf"), bbox_inches='tight')
