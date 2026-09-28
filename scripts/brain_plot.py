@@ -11,7 +11,7 @@ from scipy import ndimage
 # Paths setup
 script_path = os.path.dirname(__file__)
 repo_path = os.path.abspath(os.path.join(script_path, '..'))
-tables_path_ = os.path.join(repo_path, 'tables')
+tables_path_ = os.path.join(repo_path, 'supplementary')
 results_path_ = os.path.join(repo_path, 'results')
 fig_path_ = os.path.join(repo_path, 'figures')
 
@@ -35,7 +35,8 @@ if not os.path.exists(zmap_path):
 z_map = nib.load(zmap_path)
 
 # === Clusters ===
-df = pd.read_csv(os.path.join(tables_path_, f"contrast{id_task}", "z_threshold_3.5.csv"))
+file = os.path.join(tables_path_, f"contrast{id_task}", "z_threshold_3.5.csv")
+df = pd.read_csv(file)
 
 # keep only main clusters (numeric IDs)
 df_main = df[df["Cluster ID"].astype(str).str.fullmatch(r"\d+")].copy()
@@ -203,6 +204,4 @@ cbar_ax.add_patch(rect)
 annotate_clusters(display, clusters, target_y)
 enlarge_colorbar(display, fig)
 
-out_dir = os.path.join(fig_path_, f"contrast{id_task}")
-os.makedirs(out_dir, exist_ok=True)
-plt.savefig(os.path.join(out_dir, "brain_plot.pdf"), bbox_inches='tight')
+plt.savefig(os.path.join(fig_path_, "Figure-1_brain-plot.pdf"), bbox_inches='tight')

@@ -2,7 +2,7 @@ library("tidyr")
 library("ggplot2")
 library("scales")
 
-path <- "results"
+path <- "supplementary"
 datasets <- list.files(path, pattern = "contrast")
 patt <- "z_threshold_(.*).csv"
 res_list <- lapply(datasets, FUN = function(ds_name) {
@@ -89,8 +89,9 @@ p <- ggplot(df_points,
   scale_x_log10(labels = label_log()) +
   theme_bw()
 p
-ggsave(p, file = "figures/Notip-vs-pARI_TDP-vs-cluster-size_B=10000.png", 
+ggsave(p, file = "figures/Figure-3_TDP-vs-cluster-size.png", 
        width = 8, height = 4)
+
 
 # boxplot/violin plots requested for rebuttal
 p <- ggplot(df_points,
@@ -104,5 +105,3 @@ p <- ggplot(df_points,
   facet_grid(. ~ z, labeller = function(...) label_both(..., sep = " = ")) +
   theme_bw() 
 p
-ggsave(p, file = "figures/Notip-vs-pARI_TDP-violin-plots_B=10000.png", 
-       width = 7, height = 4)

@@ -13,13 +13,13 @@ repo_path = os.path.abspath(os.path.join(script_path, '..'))
 sys.path.append(repo_path)
 
 results_path_ = os.path.abspath(os.path.join(repo_path, 'results'))
-fig_path_ = os.path.abspath(os.path.join(repo_path, 'figures'))
+fig_path_ = os.path.abspath(os.path.join(repo_path, 'supplementary'))
 
 # Parameters
 ALPHAS = [0.05, 0.1]
 B_calib = 1000
 B_train = 1000
-PLOT_ALL_PARI = True  # if False, only plot ARI, Notip and pARI (delta=27)
+PLOT_ALL_PARI = False  # if False, only plot ARI, Notip and pARI (delta=27)
 
 # Load dataset task list
 df_tasks = pd.read_csv(os.path.join(script_path, 'contrast_list2.csv'))
@@ -58,6 +58,11 @@ for alpha in ALPHAS:
         )
         os.makedirs(fig_path, exist_ok=True)
 
+        tasks_path = os.path.join(fig_path, 'tasks.txt')
+        if not os.path.exists(tasks_path):
+            with open(tasks_path, 'w') as f:
+                f.write(f"{task1}\n{task2}\n")
+        
         # Load thresholds
         thr = np.load(threshold_path)
 
@@ -78,12 +83,15 @@ for alpha in ALPHAS:
 
         # --- Plot TDP Curve ---
         fig, ax = plt.subplots()
-        ax.plot(np.arange(1, len(TDP_ARI)+1), TDP_ARI, label='ARI', color='red', alpha=0.5)
-        ax.plot(np.arange(1, len(TDP_Notip)+1), TDP_Notip, label='Notip', color='green', alpha=0.5)
-        ax.plot(np.arange(1, len(TDP_pARI)+1), TDP_pARI, label=r'pARI ($\delta=27$)', color='blue', alpha=0.5)
+        k = np.arange(1, len(TDP_ARI)+1)
         if PLOT_ALL_PARI:
-            ax.plot(np.arange(1, len(TDP_pARI1)+1), TDP_pARI1, label=r'pARI ($\delta=1$)', color='pink')
-            ax.plot(np.arange(1, len(TDP_calibrated_simes)+1), TDP_calibrated_simes, label=r'pARI ($\delta=0$)', color='orange')
+            ax.plot(k, np.clip(1 - 1 / k, 0, None), linestyle='--', color='pink', alpha=0.5)
+            ax.plot(k, TDP_pARI1, label=r'pARI ($\delta=1$)', color='pink')
+            ax.plot(k, TDP_calibrated_simes, label=r'pARI ($\delta=0$)', color='orange')
+        ax.plot(k, TDP_ARI, label='ARI', color='red')
+        ax.plot(k, TDP_Notip, label='Notip', color='green')
+        ax.plot(k, np.clip(1 - 27 / k, 0, None), linestyle='--', color='blue', alpha=0.5)
+        ax.plot(k, TDP_pARI, label=r'pARI ($\delta=27$)', color='blue')
 
         for (z, count), thresh in zip(sorted(voxel_counts.items()), np.linspace(0.3, 0.9, len(voxel_counts))):
             ax.axvline(x=count, color='purple', linestyle='--', alpha=thresh)
@@ -102,8 +110,6 @@ for alpha in ALPHAS:
         secax.set_xlabel("z-value")
         secax.tick_params(top=True, bottom=False, labeltop=True, labelbottom=False, length=5, which='both')
         secax.set_xlim(ax.get_xlim())
-        # add contrast names? too crowded
-        # plt.suptitle(f"{task1} vs {task2}", y=1, fontsize=12)
         
         plt.tight_layout()
         suffix = "_all-curves" if PLOT_ALL_PARI else ""

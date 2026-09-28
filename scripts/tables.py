@@ -11,7 +11,7 @@ script_path = os.path.dirname(__file__)
 repo_path = os.path.abspath(os.path.join(script_path, '..'))
 
 results_path_ = os.path.join(repo_path, 'results')
-tables_path_ = os.path.join(repo_path, 'tables')
+tables_path_ = os.path.join(repo_path, 'supplementary')
 
 # Parameters
 z_thresholds = [3, 3.5, 4, 4.5, 5, 5.5]
