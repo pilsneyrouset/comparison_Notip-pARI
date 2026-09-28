@@ -280,6 +280,18 @@ def ari_inference(p_values, tdp, alpha, nifti_masker):
     return z_unmasked, region_size_ARI
 
 
+# Available methods for get_clusters_table_with_TDP_task:
+#   method name -> key in the thresholds .npz
+# (the column title in the table is "TDP (<method name>)")
+TDP_METHODS = {
+    'ARI': 'ari_thr',
+    'calibrated Simes': 'pari0_thr',     # pARI with delta=0
+    'Notip': 'notip_thr',
+    'pARI': 'pari_thr',                  # delta=27
+    'pARI1': 'pari1_thr',                # delta=1
+}
+
+
 def get_clusters_table_with_TDP_task(stat_img, thr, stat_threshold=3,
                                 cluster_threshold=None,
                                 methods=None,
@@ -290,13 +302,19 @@ def get_clusters_table_with_TDP_task(stat_img, thr, stat_threshold=3,
     stat_img : Niimg-like object,
        Statistical image (presumably in z- or p-scale).
     thr : mapping (e.g. the object returned by np.load on a thresholds .npz)
-        Must provide 'ari_thr', 'pari_thr', 'notip_thr' and 'pari1_thr',
-        as produced by compute_thresholds.py for a given task/alpha.
+        Threshold curves, as produced by compute_thresholds.py for a given
+        task/alpha. Must contain the keys of the requested `methods`
+        (see TDP_METHODS).
     stat_threshold : `float`
         Cluster forming threshold in same scale as `stat_img` (either a
         p-value or z-scale value).
     cluster_threshold : `int` or `None`, optional
         Cluster size threshold, in voxels.
+    methods : list of str or `None`, optional
+        Names of the methods to report, among the keys of TDP_METHODS
+        ('ARI', 'calibrated Simes', 'Notip', 'pARI', 'pARI1'). One column
+        "TDP (<method>)" is reported per method, in the order of the list.
+        Default: ['Notip'].
     two_sided : `bool`, optional
         Whether to employ two-sided thresholding or to evaluate positive values
         only. Default=False.
@@ -305,23 +323,27 @@ def get_clusters_table_with_TDP_task(stat_img, thr, stat_threshold=3,
     Returns
     -------
     df : `pandas.DataFrame`
-        Table with peaks, subpeaks and estimated TDP using three methods
-        from thresholded `stat_img`. For binary clusters
+        Table with peaks, subpeaks and estimated TDP (one column per entry
+        of `methods`) from thresholded `stat_img`. For binary clusters
         (clusters with >1 voxel containing only one value), the table
         reports the center of mass of the cluster,
         rather than any peaks/subpeaks.
     """
-    # Replace None with 0
     if methods is None:
         methods = ['Notip']
+    unknown = [m for m in methods if m not in TDP_METHODS]
+    if unknown:
+        raise ValueError(
+            f"Unknown method(s) {unknown}, available: {list(TDP_METHODS)}")
+    # Replace None with 0
     cluster_threshold = 0 if cluster_threshold is None else cluster_threshold
     # check that stat_img is niimg-like object and 3D
     stat_img = check_niimg_3d(stat_img)
 
-    ari_thr = thr["ari_thr"]
-    pari_thr = thr["pari_thr"]
-    notip_thr = thr["notip_thr"]
-    pari1_thr = thr["pari1_thr"]
+    # Only load the requested threshold curves (KeyError if one is missing)
+    thresholds = {m: thr[TDP_METHODS[m]] for m in methods}
+    cols = ['Cluster ID', 'X', 'Y', 'Z', 'Peak Stat', 'Cluster Size (mm3)',
+            'Number of Voxels'] + [f'TDP ({m})' for m in methods]
 
     # Apply threshold(s) to image
     stat_img = threshold_img(
@@ -377,14 +399,12 @@ def get_clusters_table_with_TDP_task(stat_img, thr, stat_threshold=3,
             cluster_mask = label_map == c_val
             masked_data = temp_stat_map * cluster_mask
             masked_data_ = masked_data[masked_data != 0]
-            # Compute TDP bounds on cluster using our 3 methods
+            # Compute TDP bounds on cluster for each requested method
             cluster_p_values = norm.sf(masked_data_)
-            ari_tdp = min_tdp(cluster_p_values, ari_thr)
-            notip_tdp = min_tdp(cluster_p_values, notip_thr)
+            tdps = {m: min_tdp(cluster_p_values, thresholds[m])
+                    for m in methods}
             cluster_size_mm = int(np.sum(cluster_mask) * voxel_size)
             voxel_number = cluster_size_mm / 27
-            pari_tdp = min_tdp(cluster_p_values, pari_thr)
-            pari1_tdp = min_tdp(cluster_p_values, pari1_thr)
 
             # Get peaks, subpeaks and associated statistics
             subpeak_ijk, subpeak_vals = _local_max(
@@ -407,36 +427,15 @@ def get_clusters_table_with_TDP_task(stat_img, thr, stat_threshold=3,
             n_subpeaks = np.min((len(subpeak_vals), 4))
             for subpeak in range(n_subpeaks):
                 if subpeak == 0:
-                    if methods == ['ARI', 'Notip', 'pARI', 'pARI1']:
-                        cols = ['Cluster ID', 'X', 'Y', 'Z', 'Peak Stat',
-                            'Cluster Size (mm3)', 'Number of Voxels',
-                            'TDP (ARI)', 'TDP (Notip)', 'TDP (pARI)', 'TDP (pARI1)']
-
-                        row = [
-                            c_id + 1,
-                            subpeak_xyz[subpeak, 0],
-                            subpeak_xyz[subpeak, 1],
-                            subpeak_xyz[subpeak, 2],
-                            f"{subpeak_vals[subpeak]:.2f}",
-                            cluster_size_mm,
-                            round(voxel_number),
-                            f"{ari_tdp:.2f}",
-                            f"{notip_tdp:.2f}",
-                            f"{pari_tdp:.2f}",
-                            f"{pari1_tdp:.2f}"]
-                    else:
-                        cols = ['Cluster ID', 'X', 'Y', 'Z', 'Peak Stat', 'Cluster Size (mm3)',
-                                'Number of Voxels', 'TDP (Notip)']
-                        row = [
-                            c_id + 1,
-                            subpeak_xyz[subpeak, 0],
-                            subpeak_xyz[subpeak, 1],
-                            subpeak_xyz[subpeak, 2],
-                            f"{subpeak_vals[subpeak]:.2f}",
-                            cluster_size_mm,
-                            round(voxel_number),
-                            f"{notip_tdp:.2f}"]                           
-                                    
+                    row = [
+                        c_id + 1,
+                        subpeak_xyz[subpeak, 0],
+                        subpeak_xyz[subpeak, 1],
+                        subpeak_xyz[subpeak, 2],
+                        f"{subpeak_vals[subpeak]:.2f}",
+                        cluster_size_mm,
+                        round(voxel_number)]
+                    row += [f"{tdps[m]:.2f}" for m in methods]
                 else:
                     # Subpeak naming convention is cluster num+letter:
                     # 1a, 1b, etc
@@ -458,9 +457,6 @@ def get_clusters_table_with_TDP_task(stat_img, thr, stat_threshold=3,
         no_clusters_found = False
 
     if no_clusters_found:
-        cols = ['Cluster ID', 'X', 'Y', 'Z', 'Peak Stat',
-                'Cluster Size (mm3)', 'Number of Voxels',
-                'TDP (ARI)', 'TDP (Notip)', 'TDP (pARI)', 'TDP (pARI1)']
         df = pd.DataFrame(columns=cols)
     else:
         df = pd.DataFrame(columns=cols, data=rows)

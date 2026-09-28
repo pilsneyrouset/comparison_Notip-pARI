@@ -16,8 +16,8 @@ tables_path_ = os.path.join(repo_path, 'supplementary')
 # Parameters
 z_thresholds = [3, 3.5, 4, 4.5, 5, 5.5]
 alpha = 0.05     # must match one of the ALPHAS used in compute_thresholds.py
-B_calib = 1000  # must match B_calib used in compute_thresholds.py
-B_train = 1000  # must match B_train used in compute_thresholds.py
+B_calib = 5000  # must match B_calib used in compute_thresholds.py
+B_train = 5000  # must match B_train used in compute_thresholds.py
 n_jobs = 5
 
 # Load dataset contrasts
@@ -50,7 +50,7 @@ def process_task(i, task1, task2):
             z_map,
             thr=thr,
             stat_threshold=z,
-            methods=['ARI', 'Notip', 'pARI', 'pARI1']
+            methods=['ARI', 'calibrated Simes', 'Notip', 'pARI', 'pARI1']
         )
         output_file = os.path.join(out_dir, f'z_threshold_{z}.csv')
         df.to_csv(output_file, index=False)
