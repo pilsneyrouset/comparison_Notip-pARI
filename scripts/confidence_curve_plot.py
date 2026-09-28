@@ -17,9 +17,9 @@ fig_path_ = os.path.abspath(os.path.join(repo_path, 'supplementary'))
 
 # Parameters
 ALPHAS = [0.05, 0.1]
-B_calib = 1000
-B_train = 1000
-PLOT_ALL_PARI = False  # if False, only plot ARI, Notip and pARI (delta=27)
+B_calib = 5000
+B_train = 5000
+PLOT_ALL_PARI = True  # if False, only plot ARI, Notip and pARI (delta=27)
 
 # Load dataset task list
 df_tasks = pd.read_csv(os.path.join(script_path, 'contrast_list2.csv'))
@@ -112,7 +112,7 @@ for alpha in ALPHAS:
         secax.set_xlim(ax.get_xlim())
         
         plt.tight_layout()
-        suffix = "_all-curves" if PLOT_ALL_PARI else ""
+        suffix = "_all-methods" if PLOT_ALL_PARI else ""
         fig_pathname = os.path.join(
             fig_path,
             f'confidence_curve_TDP_{alpha}{suffix}.pdf'
