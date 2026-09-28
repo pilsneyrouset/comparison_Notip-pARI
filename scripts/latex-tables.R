@@ -3,7 +3,7 @@ library("knitr")
 library("kableExtra")
 
 task <- "contrast36"
-path <- file.path("tables", task)
+path <- file.path("supplementary", task)
 patt <- "z_threshold_(.*).csv"
 files <- list.files(path, pattern = patt)
 
