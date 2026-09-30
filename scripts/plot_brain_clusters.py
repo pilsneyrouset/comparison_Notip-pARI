@@ -13,10 +13,14 @@ script_path = os.path.dirname(__file__)
 repo_path = os.path.abspath(os.path.join(script_path, '..'))
 tables_path_ = os.path.join(repo_path, 'supplementary')
 results_path_ = os.path.join(repo_path, 'results')
-fig_path_ = os.path.join(repo_path, 'figures')
 
 # Parameters
+# This figure is specific to contrast 36
 id_task = 36
+plot_path = os.path.join(
+    tables_path_,
+    f"contrast{id_task}"
+)
 
 # Load task contrasts from dataset
 df_tasks = pd.read_csv(os.path.join(script_path, 'contrast_list2.csv'))
@@ -41,18 +45,20 @@ df = pd.read_csv(file)
 # keep only main clusters (numeric IDs)
 df_main = df[df["Cluster ID"].astype(str).str.fullmatch(r"\d+")].copy()
 
-# find last cluster with any nonzero TDP
-last_nonzero_index = None
-for i, row in df_main.iterrows():
-    tdp = (row["TDP (ARI)"], row["TDP (Notip)"], row["TDP (pARI)"])
-    if any(v != 0 and not pd.isna(v) for v in tdp):
-        last_nonzero_index = i
+clusters_to_plot = list(range(1, 17))
 
-# keep clusters up to that index
-if last_nonzero_index is not None:
-    df_main = df_main.loc[:last_nonzero_index]
+df_main = df[
+    pd.to_numeric(df["Cluster ID"], errors="coerce").notna()
+].copy()
+
+df_main["Cluster ID"] = df_main["Cluster ID"].astype(int)
+
+df_main = df_main[
+    df_main["Cluster ID"].isin(clusters_to_plot)
+].copy()
 
 # predefined view mapping
+# The parameters are specific to Figure 36.
 views = {
     1: 'y', 2: 'z', 3: 'z', 4: 'z', 5: 'z', 6: 'z', 7: 'y', 8: 'z',
     9: 'z', 10: 'y', 11: 'x', 12: 'x', 13: 'x', 14: 'y', 15: 'y', 16: 'z'
@@ -75,6 +81,7 @@ for _, row in df_main.iterrows():
     }
 
 threshold = 3.5
+# The parameters are specific to Figure 36.
 target_y = {1: 120, 2: 85, 3: -130, 4: 85, 5: 110, 6: -110, 7: 95, 8: 85, 
             9: 110, 10: -90, 11: -125, 12:110, 13:90, 14: -110, 15: 120, 16:-110}
 
@@ -204,4 +211,4 @@ cbar_ax.add_patch(rect)
 annotate_clusters(display, clusters, target_y)
 enlarge_colorbar(display, fig)
 
-plt.savefig(os.path.join(fig_path_, "brain-plot.pdf"), bbox_inches='tight')
+plt.savefig(os.path.join(plot_path, "brain_plot.pdf"), bbox_inches='tight')
