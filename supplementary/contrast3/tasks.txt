@@ -1,0 +1,2 @@
+task004_left_hand_vs_baseline
+task004_right_foot_vs_baseline

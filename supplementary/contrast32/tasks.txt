@@ -1,0 +1,2 @@
+task001_auditory_right_motor_vs_baseline
+task001_visual_right_motor_vs_baseline

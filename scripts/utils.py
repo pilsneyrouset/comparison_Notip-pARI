@@ -2,26 +2,28 @@
 and utilitary functions to use SansSouci on fMRI data (author = A.Blain)
 
 """
+import json
+import os
+import sys
+import time
 import warnings
+from contextlib import contextmanager
+from string import ascii_lowercase
+
 import numpy as np
-from scipy.stats import norm
-from nilearn.maskers import NiftiMasker
-from nilearn.image import threshold_img
-from nilearn.image.resampling import coord_transform
+import pandas as pd
+import psutil
+import sanssouci as sa
 from nilearn._utils import check_niimg_3d
 from nilearn._utils.niimg import safe_get_data
-from nilearn.reporting.get_clusters_table import _local_max
 from nilearn.datasets import get_data_dirs
-from scipy import stats
-import sanssouci as sa
-import os
-import json
-import pandas as pd
-from tqdm import tqdm
-from string import ascii_lowercase
-from scipy import ndimage
-import sys
+from nilearn.image import threshold_img
+from nilearn.image.resampling import coord_transform
+from nilearn.maskers import NiftiMasker
+from nilearn.reporting.get_clusters_table import _local_max
 from sanssouci.post_hoc_bounds import min_tdp
+from scipy import ndimage, stats
+from scipy.stats import norm
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -55,7 +57,7 @@ def get_data_driven_template_two_tasks(
     pval0_quantiles : matrix of shape (B, p)
         Learned template (= sorted quantile curves)
     """
-    fmri_input, nifti_masker = get_processed_input(task1, task2, smoothing_fwhm=smoothing_fwhm, collection=collection)
+    fmri_input, _ = get_processed_input(task1, task2, smoothing_fwhm=smoothing_fwhm, collection=collection)
     if cap_subjects:
         # Let's compute the permuted p-values
         pval0 = sa.get_permuted_p_values_one_sample(fmri_input[:10, :],
@@ -76,11 +78,11 @@ def get_processed_input(task1, task2, smoothing_fwhm=4, collection=1952):
     Get (task1 - task2) processed input for a pair of Neurovault contrasts
     """
 
-    # Localisation des données téléchargées
+    # Location of the downloaded data
     data_path = get_data_dirs()[0]
     data_location = os.path.join(data_path, f'neurovault/collection_{collection}')
 
-    # Liste des fichiers JSON de métadonnées
+    # List of metadata JSON files
     json_files = [
         os.path.join(data_location, f) for f in os.listdir(data_location)
         if f.endswith(".json") and 'collection_metadata' not in f
@@ -110,12 +112,12 @@ def get_processed_input(task1, task2, smoothing_fwhm=4, collection=1952):
     images_task1 = np.array(images_task1)
     images_task2 = np.array(images_task2)
 
-    # Identifier les sujets communs
+    # Identify common subjects
     common_subjects = sorted(set(subjects1) & set(subjects2))
     indices1 = [subjects1.index(s) for s in common_subjects]
     indices2 = [subjects2.index(s) for s in common_subjects]
 
-    # Appliquer le masque et le lissage
+    # Apply masking and smoothing
     nifti_masker = NiftiMasker(smoothing_fwhm=smoothing_fwhm)
     all_imgs = np.concatenate([images_task1[indices1], images_task2[indices2]])
     nifti_masker.fit(all_imgs)
@@ -151,7 +153,7 @@ def get_stat_img(task1, task2, smoothing_fwhm=4, collection=1952):
     """
     fmri_input, nifti_masker = get_processed_input(
         task1, task2, smoothing_fwhm=smoothing_fwhm, collection=collection)
-    stats_, p_values = stats.ttest_1samp(fmri_input, 0)
+    _, p_values = stats.ttest_1samp(fmri_input, 0)
     z_vals = norm.isf(p_values)
     z_vals_ = nifti_masker.inverse_transform(z_vals)
 
@@ -278,31 +280,41 @@ def ari_inference(p_values, tdp, alpha, nifti_masker):
     return z_unmasked, region_size_ARI
 
 
-def get_clusters_table_with_TDP_task(stat_img, task_id, stat_threshold=3,
-                                alpha=0.05,
+# Available methods for get_clusters_table_with_TDP_task:
+#   method name -> key in the thresholds .npz
+# (the column title in the table is "TDP (<method name>)")
+TDP_METHODS = {
+    'ARI': 'ari_thr',
+    'calibrated Simes': 'pari0_thr',     # pARI with delta=0
+    'Notip': 'notip_thr',
+    'pARI': 'pari_thr',                  # delta=27
+    'pARI1': 'pari1_thr',                # delta=1
+}
+
+
+def get_clusters_table_with_TDP_task(stat_img, thr, stat_threshold=3,
                                 cluster_threshold=None,
-                                methods=['Notip'],
+                                methods=None,
                                 two_sided=False, min_distance=8.):
     """Creates pandas dataframe with img cluster statistics.
     Parameters
     ----------
     stat_img : Niimg-like object,
        Statistical image (presumably in z- or p-scale).
+    thr : mapping (e.g. the object returned by np.load on a thresholds .npz)
+        Threshold curves, as produced by compute_thresholds.py for a given
+        task/alpha. Must contain the keys of the requested `methods`
+        (see TDP_METHODS).
     stat_threshold : `float`
         Cluster forming threshold in same scale as `stat_img` (either a
         p-value or z-scale value).
-    fmri_input : array of shape (n_subjects, p)
-        Masked fMRI data
-    learned_templates : array of shape (B_train, p)
-        sorted quantile curves computed on training data
-    alpha : float
-        risk level
-    k_max : int
-        threshold families length
-    B : int
-        number of permutations at inference step
     cluster_threshold : `int` or `None`, optional
         Cluster size threshold, in voxels.
+    methods : list of str or `None`, optional
+        Names of the methods to report, among the keys of TDP_METHODS
+        ('ARI', 'calibrated Simes', 'Notip', 'pARI', 'pARI1'). One column
+        "TDP (<method>)" is reported per method, in the order of the list.
+        Default: ['Notip'].
     two_sided : `bool`, optional
         Whether to employ two-sided thresholding or to evaluate positive values
         only. Default=False.
@@ -311,38 +323,27 @@ def get_clusters_table_with_TDP_task(stat_img, task_id, stat_threshold=3,
     Returns
     -------
     df : `pandas.DataFrame`
-        Table with peaks, subpeaks and estimated TDP using three methods
-        from thresholded `stat_img`. For binary clusters
+        Table with peaks, subpeaks and estimated TDP (one column per entry
+        of `methods`) from thresholded `stat_img`. For binary clusters
         (clusters with >1 voxel containing only one value), the table
         reports the center of mass of the cluster,
         rather than any peaks/subpeaks.
     """
+    if methods is None:
+        methods = ['Notip']
+    unknown = [m for m in methods if m not in TDP_METHODS]
+    if unknown:
+        raise ValueError(
+            f"Unknown method(s) {unknown}, available: {list(TDP_METHODS)}")
     # Replace None with 0
     cluster_threshold = 0 if cluster_threshold is None else cluster_threshold
-    # print(cluster_threshold)
     # check that stat_img is niimg-like object and 3D
     stat_img = check_niimg_3d(stat_img)
 
-    stat_map_ = safe_get_data(stat_img)
-    
-    threshold_dir = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '..', 'results', 'thresholds')
-    )
-
-    threshold_path = os.path.join(
-        threshold_dir,
-        f"thresholds_task{task_id}_alpha{alpha}.npz"
-    )
-
-    if not os.path.exists(threshold_path):
-        raise FileNotFoundError(f"[ERROR] Threshold file not found:\n{threshold_path}")
-
-    # Load thresholds
-    thr = np.load(threshold_path)
-    ari_thr = thr["ari_thr"]
-    simes_thr = thr["simes_thr"]
-    pari_thr = thr["pari_thr"]
-    notip_thr = thr["notip_thr"]
+    # Only load the requested threshold curves (KeyError if one is missing)
+    thresholds = {m: thr[TDP_METHODS[m]] for m in methods}
+    cols = ['Cluster ID', 'X', 'Y', 'Z', 'Peak Stat', 'Cluster Size (mm3)',
+            'Number of Voxels'] + [f'TDP ({m})' for m in methods]
 
     # Apply threshold(s) to image
     stat_img = threshold_img(
@@ -379,7 +380,7 @@ def get_clusters_table_with_TDP_task(stat_img, task_id, stat_threshold=3,
         # If the stat threshold is too high simply return an empty dataframe
         if np.sum(binarized) == 0:
             warnings.warn(
-                'Attention: No clusters with stat {0} than {1}'.format(
+                'Attention: No clusters with stat {} than {}'.format(
                     'higher' if sign == 1 else 'lower',
                     stat_threshold * sign,
                 )
@@ -388,7 +389,7 @@ def get_clusters_table_with_TDP_task(stat_img, task_id, stat_threshold=3,
 
         # Now re-label and create table
         label_map = ndimage.measurements.label(binarized, conn_mat)[0]
-        clust_ids = sorted(list(np.unique(label_map)[1:]))
+        clust_ids = sorted(np.unique(label_map)[1:])
         peak_vals = np.array(
             [np.max(temp_stat_map * (label_map == c)) for c in clust_ids])
         # Sort by descending max value
@@ -398,12 +399,12 @@ def get_clusters_table_with_TDP_task(stat_img, task_id, stat_threshold=3,
             cluster_mask = label_map == c_val
             masked_data = temp_stat_map * cluster_mask
             masked_data_ = masked_data[masked_data != 0]
-            # Compute TDP bounds on cluster using our 3 methods
+            # Compute TDP bounds on cluster for each requested method
             cluster_p_values = norm.sf(masked_data_)
-            ari_tdp = min_tdp(cluster_p_values, ari_thr)
-            notip_tdp = min_tdp(cluster_p_values, notip_thr)
+            tdps = {m: min_tdp(cluster_p_values, thresholds[m])
+                    for m in methods}
             cluster_size_mm = int(np.sum(cluster_mask) * voxel_size)
-            pari_tdp = min_tdp(cluster_p_values, pari_thr)
+            voxel_number = cluster_size_mm / 27
 
             # Get peaks, subpeaks and associated statistics
             subpeak_ijk, subpeak_vals = _local_max(
@@ -426,44 +427,26 @@ def get_clusters_table_with_TDP_task(stat_img, task_id, stat_threshold=3,
             n_subpeaks = np.min((len(subpeak_vals), 4))
             for subpeak in range(n_subpeaks):
                 if subpeak == 0:
-                    if methods == ['ARI', 'Notip', 'pARI']:
-                        cols = ['Cluster ID', 'X', 'Y', 'Z', 'Peak Stat', 'Cluster Size (mm3)',
-                                    'TDP (ARI)', 'TDP (Notip)', 'TDP (pARI)']
-                        row = [
-                            c_id + 1,
-                            subpeak_xyz[subpeak, 0],
-                            subpeak_xyz[subpeak, 1],
-                            subpeak_xyz[subpeak, 2],
-                            "{0:.2f}".format(subpeak_vals[subpeak]),
-                            cluster_size_mm,
-                            "{0:.2f}".format(ari_tdp),
-                            "{0:.2f}".format(notip_tdp),
-                            "{0:.2f}".format(pari_tdp)]
-                    else:
-                        cols = ['Cluster ID', 'X', 'Y', 'Z', 'Peak Stat', 'Cluster Size (mm3)',
-                                'TDP (Notip)']
-                        row = [
-                            c_id + 1,
-                            subpeak_xyz[subpeak, 0],
-                            subpeak_xyz[subpeak, 1],
-                            subpeak_xyz[subpeak, 2],
-                            "{0:.2f}".format(subpeak_vals[subpeak]),
-                            cluster_size_mm,
-                            "{0:.2f}".format(notip_tdp)]                           
-                                    
+                    row = [
+                        c_id + 1,
+                        subpeak_xyz[subpeak, 0],
+                        subpeak_xyz[subpeak, 1],
+                        subpeak_xyz[subpeak, 2],
+                        f"{subpeak_vals[subpeak]:.2f}",
+                        cluster_size_mm,
+                        round(voxel_number)]
+                    row += [f"{tdps[m]:.2f}" for m in methods]
                 else:
                     # Subpeak naming convention is cluster num+letter:
                     # 1a, 1b, etc
-                    sp_id = '{0}{1}'.format(
-                        c_id + 1,
-                        ascii_lowercase[subpeak - 1],
-                    )
+                    sp_id = f'{c_id + 1}{ascii_lowercase[subpeak - 1]}'
                     row = [
                         sp_id,
                         subpeak_xyz[subpeak, 0],
                         subpeak_xyz[subpeak, 1],
                         subpeak_xyz[subpeak, 2],
-                        "{0:.2f}".format(subpeak_vals[subpeak]),
+                        f"{subpeak_vals[subpeak]:.2f}",
+                        '',
                         '']
                     
                     row += [''] * len(methods)
@@ -474,8 +457,6 @@ def get_clusters_table_with_TDP_task(stat_img, task_id, stat_threshold=3,
         no_clusters_found = False
 
     if no_clusters_found:
-        cols = ['Cluster ID', 'X', 'Y', 'Z', 'Peak Stat', 'Cluster Size (mm3)',
-                                    'TDP (ARI)', 'TDP (Notip)', 'TDP (pARI)']
         df = pd.DataFrame(columns=cols)
     else:
         df = pd.DataFrame(columns=cols, data=rows)
@@ -511,3 +492,27 @@ def _compute_hommel_value(z_vals, alpha, verbose=False):
             plt.plot([0, n_samples], [0, 0], 'k')
             plt.show(block=False)
     return np.minimum(hommel_value, n_samples)
+
+# monitoring time and memory spent per step
+class Timer:
+    def __init__(self):
+        self._process = psutil.Process(os.getpid())
+
+    def _mem_mb(self):
+        return self._process.memory_info().rss / (1024 ** 2)
+
+    @contextmanager
+    def step(self, msg):
+        """Wrap a block of code to log its start, its end and its duration.
+
+        Usage:
+            with t.step("doing something"):
+                ... code ...
+        """
+        print(f"[start |{self._mem_mb():7.1f} Mo] {msg}", flush=True)
+        t0 = time.perf_counter()
+        try:
+            yield
+        finally:
+            elapsed = time.perf_counter() - t0
+            print(f"[{elapsed:6.2f}s |{self._mem_mb():7.1f} Mo] {msg} -- done", flush=True)

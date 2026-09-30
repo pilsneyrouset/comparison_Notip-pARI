@@ -28,13 +28,13 @@ This computes the thresholds needed to reproduce the figures.
 To reproduce all tables from the paper, run :
 
 ```
-python3 scripts/tables.py
+python3 scripts/write_tables.py
 ```
 
 These results can be visualized as follows (Figure 3, using R):
 
 ```r
-source("scripts/figure-3.R")
+source("scripts/plot_result_summary.R")
 ```
 
 ### Brain Visualization (Figure 1)
@@ -42,7 +42,7 @@ source("scripts/figure-3.R")
 To generate the brain visualization, run :
 
 ```
-python3 scripts/brain_plot.py
+python3 scripts/plot_brain_clusters.py
 ```
 
 ### Plot TDP curves (Figure 2)
@@ -50,5 +50,5 @@ python3 scripts/brain_plot.py
 To generate the TDP curves, run :
 
 ```
-python3 scripts/confidence_curve_plot.py
+python3 scripts/plot_confidence_curve.py
 ```
